@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Main Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.ultra
+      args:
+        - NODE_ENV=production
+    ports:
+      - "443:443"
+    environment:
+      - VITE_API_URL=https://api.ultrachecks.com
+      - VITE_STRIPE_KEY=${STRIPE_PUBLIC_KEY}
+      - VITE_GOOGLE_ANALYTICS=${GA_ID}
+      - VITE_SENTRY_DSN=${SENTRY_DSN}
+      - VITE_3D_RENDERER=high
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./cache/3d-assets:/app/public/3d-assets
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+      placement:
+        constraints:
+          - node.labels.gpu == true
+
+  # AI Processing Backend
+  ai-processor:
+    build:
+      context: ./ai-backend
+      dockerfile: Dockerfile.ai
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - TF_FORCE_GPU_ALLOW_GROWTH=true
+      - MODEL_PATH=/models
+    volumes:
+      - ./ai-models:/models
+      - ./training-data:/data
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          memory: 4G
+          cpus: '2'
+      placement:
+        constraints:
+          - node.labels.gpu == true
+          - node.role == worker
+
+  # Blockchain Verification
+  blockchain-verifier:
+    image: hyperledger/fabric-peer:latest
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - FABRIC_LOGGING_SPEC=INFO
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - ./blockchain:/var/hyperledger/production
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # Real-time Collaboration
+  collaboration-server:
+    build: ./collaboration
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "3002:3002"
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Monitoring & Analytics
+  monitoring:
+    image: grafana/grafana
+    ports:
+      - "3003:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards
+    deploy:
+      mode: replicated
+      replicas: 1
+
+volumes:
+  grafana-data:
+  ai-models:
+  blockchain-data:

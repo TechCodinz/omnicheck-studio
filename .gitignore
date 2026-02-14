@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.local
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Custom
+.gemini/
+brain/
+backups/
+*.log
+*.sqlite
+*.db
