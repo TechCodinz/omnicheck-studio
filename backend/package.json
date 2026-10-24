@@ -2,7 +2,7 @@
     "name": "check-generator-backend",
     "version": "1.0.0",
     "description": "Enterprise-grade document generator backend",
-    "main": "server.js",
+    "main": "dist/server.js",
     "dependencies": {
         "@tensorflow/tfjs": "^4.10.0",
         "@types/axios": "^0.9.36",
@@ -35,6 +35,7 @@
         "@types/morgan": "^1.9.10",
         "@types/node": "^20.19.30",
         "@types/pdfkit": "^0.17.4",
+        "@types/ws": "^8.18.2",
         "bcrypt": "^6.0.0",
         "better-sqlite3": "^12.6.2",
         "jsonwebtoken": "^9.0.3",
@@ -42,7 +43,8 @@
         "typescript": "^5.9.3"
     },
     "scripts": {
-        "start": "ts-node server.ts",
-        "dev": "nodemon --exec ts-node server.ts"
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "dev": "ts-node server.ts"
     }
 }

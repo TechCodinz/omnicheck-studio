@@ -23,7 +23,10 @@ export class TaxController {
      * Save a new tax document
      */
     async saveDocument(req: Request, res: Response) {
-        const { userId, templateId, data, status } = req.body;
+        // The owner is the authenticated user — never a client-supplied id.
+        const userId = String((req as any).user?.id || '');
+        if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
+        const { templateId, data, status } = req.body;
         const id = uuidv4();
 
         try {
@@ -42,7 +45,10 @@ export class TaxController {
      * Get user's tax documents
      */
     async getDocuments(req: Request, res: Response) {
-        const { userId } = req.params;
+        // IDOR guard: a user may only list their own documents, whatever
+        // userId is put in the URL.
+        const userId = String((req as any).user?.id || '');
+        if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
         try {
             const rows = db.prepare('SELECT * FROM tax_documents WHERE user_id = ? ORDER BY updated_at DESC').all(userId);
             res.json(rows.map((row: any) => ({
@@ -62,12 +68,16 @@ export class TaxController {
         const { data, status } = req.body;
 
         try {
-            db.prepare(`
-                UPDATE tax_documents 
+            const userId = String((req as any).user?.id || '');
+            const info: any = db.prepare(`
+                UPDATE tax_documents
                 SET data = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            `).run(JSON.stringify(data), status, id);
+                WHERE id = ? AND user_id = ?
+            `).run(JSON.stringify(data), status, id, userId);
 
+            if (!info || info.changes === 0) {
+                return res.status(404).json({ success: false, error: 'Document not found' });
+            }
             res.json({ success: true });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message });

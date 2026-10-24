@@ -16,8 +16,19 @@ import { DepositController } from './controllers/DepositController';
 import { PaymentController } from './controllers/PaymentController';
 import { AdminController } from './controllers/AdminController';
 import { TaxController } from './controllers/TaxController';
+import { authenticateToken, generateToken, requireAdmin, rateLimitAuth } from './middleware/AuthMiddleware';
+import bcrypt from 'bcrypt';
 
-const upload = multer({ storage: multer.memoryStorage() });
+// Uploads stay in memory, so cap them hard: an unbounded memory upload is a
+// one-request denial of service.
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024, files: 4 }
+});
+
+// Only the configured frontend origin may call the API. A wildcard origin on
+// an authenticated, document-generating API is not acceptable in production.
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
 const depositController = new DepositController();
 const paymentController = new PaymentController();
 const adminController = new AdminController();
@@ -27,7 +38,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: "*", // Adjust for production
+        origin: CORS_ORIGIN,
         methods: ["GET", "POST"]
     }
 });
@@ -50,7 +61,7 @@ try {
 
 // Security middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('combined'));
@@ -61,6 +72,11 @@ const limiter = rateLimit({
     max: 100 // limit each IP to 100 requests per windowMs
 });
 app.use('/api/', limiter);
+
+// Health check (no auth, no data)
+app.get('/api/health', (req, res) => {
+    res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Template Management
 import db from './db/Database';
@@ -145,7 +161,7 @@ app.get('/api/template/:id', (req, res) => {
 });
 
 
-app.post('/api/generate-pdf', async (req, res) => {
+app.post('/api/generate-pdf', authenticateToken, async (req: any, res) => {
     try {
         const {
             templateId,
@@ -158,6 +174,22 @@ app.post('/api/generate-pdf', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required parameters'
+            });
+        }
+
+        // Validate the fields the PDF/MICR generator actually dereferences.
+        // Without this, a malformed body crashed deep in the generator as an
+        // opaque 500 (e.g. reading .length of an undefined routing number).
+        const missing: string[] = [];
+        if (!checkData.checkNumber) missing.push('checkData.checkNumber');
+        if (!checkData.payeeName) missing.push('checkData.payeeName');
+        if (checkData.amount === undefined || Number.isNaN(Number(checkData.amount)) || Number(checkData.amount) <= 0) missing.push('checkData.amount (positive number)');
+        if (!/^\d{9}$/.test(String(checkData.routingNumber || ''))) missing.push('checkData.routingNumber (9 digits)');
+        if (!/^\d{4,17}$/.test(String(checkData.accountNumber || ''))) missing.push('checkData.accountNumber (4-17 digits)');
+        if (missing.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: `Invalid or missing fields: ${missing.join(', ')}`
             });
         }
 
@@ -207,7 +239,7 @@ app.post('/api/generate-pdf', async (req, res) => {
             const report = await fraudDetector.detectFraud({
                 ...checkData,
                 id: `gen_${Date.now()}`,
-                userId: req.body.userId || 'anonymous',
+                userId: String(req.user?.id || 'unknown'),
                 metadata: { ipAddress: req.ip || '0.0.0.0' }
             });
             console.log('Fraud Detection Report:', report);
@@ -234,8 +266,12 @@ app.post('/api/generate-pdf', async (req, res) => {
     }
 });
 
-app.post('/api/save-template', (req, res) => {
-    const { templateData, userId } = req.body;
+app.post('/api/save-template', authenticateToken, (req: any, res) => {
+    const { templateData } = req.body || {};
+    if (!templateData || typeof templateData !== 'object') {
+        return res.status(400).json({ success: false, error: 'templateData is required' });
+    }
+    const userId = req.user?.id;
 
     // Validate and save custom template
     const templateId = `custom_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
@@ -245,7 +281,7 @@ app.post('/api/save-template', (req, res) => {
             templateId,
             templateData.name || 'Untitled Template',
             JSON.stringify(templateData),
-            userId || 1 // Default user for now
+            userId
         );
 
         res.json({
@@ -267,13 +303,23 @@ import { AnalyticsController } from './controllers/AnalyticsController';
 
 // ... (existing helper function app.get etc)
 
-import { authenticateToken, generateToken } from './middleware/AuthMiddleware';
-import bcrypt from 'bcrypt';
 
 // Auth Routes
-app.post('/api/auth/register', async (req, res) => {
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+app.post('/api/auth/register', rateLimitAuth, async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body || {};
+        if (typeof email !== 'string' || !EMAIL_RE.test(email)) {
+            return res.status(400).json({ success: false, error: 'A valid email is required' });
+        }
+        if (typeof password !== 'string' || password.length < 8) {
+            return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+        }
+        const existing: any = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        if (existing) {
+            return res.status(409).json({ success: false, error: 'An account with this email already exists' });
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const info = db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)').run(email, hashedPassword);
@@ -286,9 +332,12 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', rateLimitAuth, async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body || {};
+        if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+            return res.status(400).json({ success: false, error: 'Email and password are required' });
+        }
         const user: any = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 
         if (user && await bcrypt.compare(password, user.password_hash)) {
@@ -306,8 +355,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Enterprise Routes (Protected)
 app.post('/api/verify', authenticateToken, VerificationController.verify);
 app.post('/api/secure', authenticateToken, SecurityController.secure);
-app.post('/api/analytics/track', AnalyticsController.trackEvent); // Often public or uses API key
-app.post('/api/analytics/track', AnalyticsController.trackEvent); // Often public or uses API key
+app.post('/api/analytics/track', authenticateToken, AnalyticsController.trackEvent);
 app.get('/api/analytics/dashboard', authenticateToken, AnalyticsController.getDashboard);
 
 // Mobile Deposit Route
@@ -327,9 +375,9 @@ app.post('/api/payments/ach', authenticateToken, (req, res) => paymentController
 TaxController.seedTemplates();
 
 // Admin Dashboard Routes (Phase 34)
-app.get('/api/admin/stats', authenticateToken, (req, res) => adminController.getSystemStats(req, res));
-app.get('/api/admin/verifications', authenticateToken, (req, res) => adminController.getVerifications(req, res));
-app.get('/api/admin/ach-batches', authenticateToken, (req, res) => adminController.getACHBatches(req, res));
+app.get('/api/admin/stats', authenticateToken, requireAdmin, (req, res) => adminController.getSystemStats(req, res));
+app.get('/api/admin/verifications', authenticateToken, requireAdmin, (req, res) => adminController.getVerifications(req, res));
+app.get('/api/admin/ach-batches', authenticateToken, requireAdmin, (req, res) => adminController.getACHBatches(req, res));
 
 // Tax Routes
 app.get('/api/tax/templates', authenticateToken, (req, res) => taxController.getTemplates(req, res));
@@ -340,6 +388,22 @@ app.put('/api/tax/documents/:id', authenticateToken, (req, res) => taxController
 
 
 // WebSocket Handling
+// In production a socket must present a valid JWT, otherwise anyone could
+// join any document room and receive other users' field updates.
+if (process.env.NODE_ENV === 'production') {
+    const jwt = require('jsonwebtoken');
+    io.use((socket: Socket, next: (err?: Error) => void) => {
+        const token = (socket.handshake.auth as any)?.token;
+        if (!token) return next(new Error('Authentication required'));
+        try {
+            (socket as any).user = jwt.verify(token, process.env.JWT_SECRET as string);
+            next();
+        } catch {
+            next(new Error('Invalid token'));
+        }
+    });
+}
+
 io.on('connection', (socket: Socket) => {
     console.log('User connected:', socket.id);
 

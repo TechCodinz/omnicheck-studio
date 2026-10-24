@@ -1,4 +1,5 @@
 import io from 'socket.io-client';
+import { API_URL } from '../config';
 
 export interface TeamMember {
     id: string;
@@ -38,7 +39,7 @@ export class TeamCollaborationEngine {
     private eventHandlers: Map<string, Function[]> = new Map();
 
     async startCollaborativeSession(checkId: string, user: TeamMember): Promise<CollaborationSession> {
-        this.socket = io('http://localhost:3001');
+        this.socket = io(API_URL, { auth: { token: localStorage.getItem('token') || '' } });
 
         this.socket.on('connect', () => {
             console.log('Connected to collaboration server');

@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 
 const dbPath = path.resolve(__dirname, '../../check_generator.db');
-const db = new Database(dbPath, { verbose: console.log });
+const db = new Database(dbPath, process.env.DB_DEBUG ? { verbose: console.log } : {});
 
 // Initialize Schema
 export const initDatabase = () => {

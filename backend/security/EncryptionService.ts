@@ -33,7 +33,7 @@ interface PIIField {
 }
 
 export class EncryptionService {
-    private algorithm = 'aes-256-gcm';
+    private algorithm: 'aes-256-gcm' = 'aes-256-gcm';
     private keyLength = 32; // 256 bits
     private ivLength = 16;
     private tagLength = 16;
@@ -114,7 +114,7 @@ export class EncryptionService {
         }
 
         const decipher = crypto.createDecipheriv(
-            encryptedData.algorithm,
+            encryptedData.algorithm as 'aes-256-gcm',
             key.key,
             Buffer.from(encryptedData.iv, 'hex'),
             { authTagLength: this.tagLength }
@@ -132,7 +132,7 @@ export class EncryptionService {
      * Encrypt specific PII fields in an object
      */
     encryptPII<T extends Record<string, any>>(data: T): T {
-        const encrypted = { ...data };
+        const encrypted: Record<string, any> = { ...data };
 
         for (const field of this.piiFields) {
             if (field.encrypted && encrypted[field.fieldName] !== undefined) {
@@ -143,14 +143,14 @@ export class EncryptionService {
             }
         }
 
-        return encrypted;
+        return encrypted as T;
     }
 
     /**
      * Decrypt specific PII fields in an object
      */
     decryptPII<T extends Record<string, any>>(data: T): T {
-        const decrypted = { ...data };
+        const decrypted: Record<string, any> = { ...data };
 
         for (const field of this.piiFields) {
             if (field.encrypted && decrypted[field.fieldName]) {
@@ -161,7 +161,7 @@ export class EncryptionService {
             }
         }
 
-        return decrypted;
+        return decrypted as T;
     }
 
     /**
@@ -282,7 +282,7 @@ export class EncryptionService {
         }
 
         const decipher = crypto.createDecipheriv(
-            metadata.algorithm,
+            metadata.algorithm as 'aes-256-gcm',
             key.key,
             Buffer.from(metadata.iv, 'hex'),
             { authTagLength: this.tagLength }

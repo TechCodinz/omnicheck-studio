@@ -1,3 +1,8 @@
+# WARNING (2026-10-24 audit): this compose file is ASPIRATIONAL and has not been
+# verified end-to-end. It references Dockerfiles/configs (Dockerfile.prod,
+# nginx/, monitoring/, redis.conf, fonts/) that are not all present in the repo.
+# The verified local stack is docker-compose.yml. Treat this file as a
+# starting point, not a deploy button.
 version: '3.8'
 
 services:
@@ -80,7 +85,7 @@ services:
     build: ./collaboration
     environment:
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the environment}
     ports:
       - "3002:3002"
     deploy:
@@ -97,7 +102,7 @@ services:
     ports:
       - "3003:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in the environment}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards

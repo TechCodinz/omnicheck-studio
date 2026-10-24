@@ -15,7 +15,7 @@ interface MergeRequest { id: string; documentId: string; changes: DocumentChange
 class VersionControlSystem {
     async initialize(docId: string) { }
     async commit(data: any) { return '1.0.1'; }
-    async getVersions(docId: string) { return []; }
+    async getVersions(docId: string): Promise<any[]> { return []; }
     async getLatestVersion(docId: string) { return '1.0.0'; }
 }
 

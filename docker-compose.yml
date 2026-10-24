@@ -1,50 +1,30 @@
-version: '3.8'
-
+# OmniCheck Studio — local / single-host stack.
+#
+# This file was rewritten in the 2026-10-24 hardening pass. The previous
+# version could not run: it referenced Dockerfiles that did not exist,
+# provisioned MongoDB and Redis that the backend never connects to (the
+# backend uses better-sqlite3), and shipped a placeholder JWT secret.
+#
+# Required: create a .env next to this file with a real JWT_SECRET, e.g.
+#   JWT_SECRET=$(openssl rand -hex 32)
+# The backend refuses to start without a strong secret.
 services:
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost:3001
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    depends_on:
-      - backend
-
   backend:
     build: ./backend
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://mongodb:27017/checkgenerator
-      - JWT_SECRET=your-secret-key-change-in-production
-      - REDIS_URL=redis://redis:6379
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:3001}
+    ports:
+      - "3000:3000"
     depends_on:
-      - mongodb
-      - redis
-
-  mongodb:
-    image: mongo:6
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      - MONGO_INITDB_DATABASE=checkgenerator
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-volumes:
-  mongodb_data:
-  redis_data:
+      - backend

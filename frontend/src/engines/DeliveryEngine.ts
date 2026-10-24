@@ -1,14 +1,16 @@
 import { CheckData } from './UniversalBankCompatibility';
+import { apiUrl } from '../config';
 import JSZip from 'jszip';
 
 // Placeholder Classes for external engines not fully defined in prompt
 class PDFEngine {
     async generate(check: CheckData, options: any): Promise<Uint8Array> {
         try {
-            const response = await fetch('http://localhost:3001/api/generate-pdf', {
+            const response = await fetch(apiUrl('/api/generate-pdf'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
                 },
                 body: JSON.stringify({
                     templateId: options.templateId || 'premium-1',
@@ -35,7 +37,7 @@ class EmailEngine {
 class PrintEngine {
     async print(check: CheckData, options: any = {}): Promise<{ jobId: string; status: string }> {
         try {
-            const response = await fetch('http://localhost:3001/api/print', {
+            const response = await fetch(apiUrl('/api/print'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -59,7 +61,7 @@ class PrintEngine {
 class APIEngine {
     async send(check: CheckData, endpoint: string, options: any = {}): Promise<{ success: boolean; response: any }> {
         try {
-            const response = await fetch(endpoint || 'http://localhost:3001/api/checks', {
+            const response = await fetch(endpoint || apiUrl('/api/checks'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

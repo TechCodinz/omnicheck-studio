@@ -22,3 +22,12 @@ backups/
 *.log
 *.sqlite
 *.db
+
+# Backups and editor artefacts (removed from the repo 2026-10-24)
+*.bak
+*.bak.*
+*_BACKUP_*
+src_backup_*/
+frontend_start_log.txt
+check_generator.db
+fonts/*.ttf

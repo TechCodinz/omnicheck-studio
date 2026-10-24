@@ -1,7 +1,15 @@
 /**
  * LicenseContext — OmniCheck Pro Licensing & Subscription System
  * Client-side plan management with localStorage persistence.
- * Upgrade to server-side auth when scaling.
+ *
+ * SECURITY NOTE: this is a UI convenience only, not an entitlement
+ * system. Anything stored in localStorage can be edited by the user,
+ * so paid features must ALSO be enforced by the backend (the API now
+ * requires a JWT for PDF generation and template saving, and admin
+ * endpoints require a server-issued admin role). There is deliberately
+ * no client-side admin password: a password compiled into the browser
+ * bundle is public, and a previous hardcoded one was removed in the
+ * 2026-10-24 hardening pass — rotate it anywhere it was reused.
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
@@ -113,7 +121,6 @@ interface LicenseContextType {
     activatePlan: (planId: string, txId?: string) => void;
     useCheckExport: () => boolean; // returns true if allowed, decrements count
     resetToFree: () => void;
-    validateAdminPassword: (password: string) => boolean;
 }
 
 const LicenseContext = createContext<LicenseContextType | null>(null);
@@ -193,12 +200,6 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setLicense({ ...DEFAULT_LICENSE });
     }, []);
 
-    const validateAdminPassword = useCallback((password: string): boolean => {
-        // Simple secure check - in production use bcrypt/argon2
-        // Default password for owner: "admin_secret_88"
-        return password === 'admin_secret_88';
-    }, []);
-
     return (
         <LicenseContext.Provider value={{
             license,
@@ -211,7 +212,6 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             activatePlan,
             useCheckExport,
             resetToFree,
-            validateAdminPassword
         }}>
             {children}
         </LicenseContext.Provider>

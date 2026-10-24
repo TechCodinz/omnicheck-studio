@@ -53,7 +53,7 @@ class Web3 {
     }
 }
 
-const CHECK_VERIFICATION_ABI = []; // ABI placeholder
+const CHECK_VERIFICATION_ABI: any[] = []; // ABI placeholder — no real contract is configured
 
 export class BlockchainVerificationLedger {
     private web3: any;

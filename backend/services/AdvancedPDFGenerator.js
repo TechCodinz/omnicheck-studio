@@ -1,5 +1,6 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 // const { createCanvas } = require('canvas'); // Unused and causes native build issues
 
@@ -38,8 +39,18 @@ class AdvancedPDFGenerator {
                 doc.on('end', () => resolve(Buffer.concat(chunks)));
                 doc.on('error', reject);
 
-                // Register MICR font
-                doc.registerFont('MICRE13B', './fonts/micr-e13b.ttf');
+                // Register MICR font only if it is actually installed.
+                // Previously this registered a path that does not exist in
+                // the repo (resolved relative to the process CWD, too), and
+                // pdfkit threw ENOENT the first time the MICR line was drawn,
+                // failing every PDF generation with an opaque 500.
+                const micrFontPath = path.resolve(__dirname, '../fonts/micr-e13b.ttf');
+                this.micrFontAvailable = fs.existsSync(micrFontPath);
+                if (this.micrFontAvailable) {
+                    doc.registerFont('MICRE13B', micrFontPath);
+                } else {
+                    console.warn('[PDF] MICR font not found at ' + micrFontPath + ' - falling back to Helvetica for the MICR line. Install a licensed E-13B font there for production check printing.');
+                }
 
                 // Register premium fonts
                 const fonts = {
@@ -188,7 +199,7 @@ class AdvancedPDFGenerator {
         const micr = this.generateMICRCharacters(routingNumber, accountNumber, checkNumber);
 
         doc.save();
-        doc.font('MICRE13B')
+        doc.font(this.micrFontAvailable ? 'MICRE13B' : 'Helvetica')
             .fontSize(14)
             .fillColor('#000000'); // Magnetic ink black
 
@@ -272,12 +283,16 @@ class AdvancedPDFGenerator {
         doc.opacity(0.3);
 
         // Create iridescent effect
+        // NOTE: pdfkit gradients only accept hex/rgb colours — the previous
+        // hsla() strings parsed to null and crashed every generation here.
+        // Use hex colours with the stop() opacity argument instead.
+        const palette = ['#ff0000', '#ff9900', '#33cc33', '#3366ff', '#9933ff'];
         for (let i = 0; i < 5; i++) {
             const gradient = doc.radialGradient(306, 396, 0, 306, 396, 400);
 
-            gradient.stop(0, `hsla(${i * 72}, 100%, 50%, 0.1)`)
-                .stop(0.5, `hsla(${i * 72 + 36}, 100%, 50%, 0.05)`)
-                .stop(1, `hsla(${i * 72 + 72}, 100%, 50%, 0)`);
+            gradient.stop(0, palette[i % palette.length], 0.1)
+                .stop(0.5, palette[(i + 1) % palette.length], 0.05)
+                .stop(1, palette[(i + 2) % palette.length], 0);
 
             doc.circle(306, 396, 200 + i * 40)
                 .fill(gradient);
@@ -303,7 +318,7 @@ class AdvancedPDFGenerator {
         doc.font('Helvetica-Bold')
             .fontSize(24)
             .fill(gradient)
-            .text(`$${amount.toFixed(2)}`, amountX, amountY);
+            .text(`$${(Number(amount) || 0).toFixed(2)}`, amountX, amountY);
         doc.restore();
     }
 

@@ -1,101 +1,33 @@
 #!/bin/bash
+# OmniCheck Studio — install THIS repository.
+# The previous version of this script did not install the repo at all: it
+# scaffolded a brand-new create-react-app project in a different folder and
+# installed packages the code does not use. Rewritten 2026-10-24.
+set -e
+cd "$(dirname "$0")"
 
-# Premium Check Generator Installation Script
+echo "OmniCheck Studio installation"
+echo "============================="
 
-echo "🚀 Starting Premium Check Generator Installation..."
-echo "================================================="
+command -v node >/dev/null 2>&1 || { echo "Node.js 20+ is required."; exit 1; }
+command -v npm >/dev/null 2>&1 || { echo "npm is required."; exit 1; }
 
-# Check for prerequisites
-command -v node >/dev/null 2>&1 || { 
-  echo "Node.js is not installed. Please install Node.js 16+"; 
-  exit 1; 
-}
+echo "Installing backend dependencies (native modules will build)..."
+(cd backend && npm ci --no-audit --no-fund)
 
-command -v npm >/dev/null 2>&1 || { 
-  echo "npm is not installed. Please install npm"; 
-  exit 1; 
-}
+echo "Installing frontend dependencies..."
+(cd frontend && npm ci --no-audit --no-fund)
 
-command -v docker >/dev/null 2>&1 || { 
-  echo "Docker is not installed. Installing Docker...";
-  # Docker installation commands for different OS
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    sudo usermod -aG docker $USER
-  elif [[ "$OSTYPE" == "darwin"* ]]; then
-    brew install docker
-  fi
-}
+if [ ! -f .env ]; then
+  cp .env.example .env
+  echo ""
+  echo "Created .env from .env.example."
+  echo "IMPORTANT: set a real JWT_SECRET in .env before starting the backend:"
+  echo "  JWT_SECRET=$(openssl rand -hex 32)"
+fi
 
-# Create project structure
-echo "📁 Creating project structure..."
-mkdir -p check-generator/{frontend,backend,shared,data}
-cd check-generator
-
-# Frontend setup
-echo "⚛️  Setting up frontend..."
-npx create-react-app frontend --template typescript
-cd frontend
-
-# Install frontend dependencies
-npm install react-dnd react-dnd-html5-backend html2canvas jspdf fabric
-npm install axios styled-components react-router-dom react-icons
-npm install zod react-hook-form @hookform/resolvers
-npm install @stripe/react-stripe-js @stripe/stripe-js
-npm install react-toastify chart.js react-chartjs-2
-
-# Backend setup
-echo "⚙️  Setting up backend..."
-cd ../backend
-npm init -y
-npm install express cors helmet morgan rate-limiter
-npm install mongoose redis jsonwebtoken bcryptjs
-npm install pdfkit pdf-lib stripe
-npm install aws-sdk multer multer-s3
-npm install dotenv winston
-
-# Install development dependencies
-npm install -D nodemon jest supertest eslint prettier
-
-# Create necessary directories
-mkdir -p {controllers,models,routes,services,middleware,utils,templates,logs}
-
-# Copy configuration files
-echo "📋 Copying configuration files..."
-cp ../.env.example .env
-
-# Initialize git
-echo "📦 Initializing git repository..."
-cd ..
-git init
-echo "node_modules/" > .gitignore
-echo "*.env" >> .gitignore
-echo "*.log" >> .gitignore
-echo ".DS_Store" >> .gitignore
-
-# Build Docker images
-echo "🐳 Building Docker images..."
-docker-compose build
-
-# Display installation complete message
 echo ""
-echo "✅ Installation Complete!"
-echo ""
-echo "To start the application:"
-echo "1. Configure environment variables:"
-echo "   cp .env.example .env"
-echo "   # Edit .env with your settings"
-echo ""
-echo "2. Start the application:"
-echo "   docker-compose up"
-echo ""
-echo "3. Access the application:"
-echo "   Frontend: http://localhost:3000"
-echo "   Backend API: http://localhost:3001"
-echo ""
-echo "For development:"
-echo "   cd frontend && npm start"
-echo "   cd backend && npm run dev"
-echo ""
-echo "📚 Documentation available at: /docs"
+echo "Done. Start the app:"
+echo "  Backend : cd backend && npm run dev    # http://localhost:3001 (needs JWT_SECRET)"
+echo "  Frontend: cd frontend && npm start      # http://localhost:3000"
+echo "Or with Docker: docker compose up --build   (requires JWT_SECRET in .env)"

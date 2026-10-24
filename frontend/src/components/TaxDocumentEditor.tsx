@@ -16,6 +16,7 @@ import IDFormRenderer from './IDFormRenderer';
 import DeliveryModal, { CheckDeliveryOptions } from './DeliveryModal';
 import { BorderConfig } from './BorderlineEngine';
 import UltimateCustomizationPanel from './UltimateCustomizationPanel';
+import { apiUrl } from '../config';
 
 // ============== TYPES ==============
 
@@ -216,7 +217,8 @@ export const TaxDocumentEditor: React.FC<TaxDocumentEditorProps> = ({
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const userId = 'demo-user-123'; // In a real app, this would come from auth context
+    // The backend derives the owner from the JWT — no client user id.
+    const userId = 'me';
 
     const handleDeliver = async (method: string, options: CheckDeliveryOptions) => {
         console.log(`Delivering tax doc via ${method}`, options);
@@ -229,7 +231,7 @@ export const TaxDocumentEditor: React.FC<TaxDocumentEditorProps> = ({
     // Load history
     useEffect(() => {
         if (activeTab === 'history') {
-            fetch(`/api/tax/documents/${userId}`, {
+            fetch(apiUrl(`/api/tax/documents/${userId}`), {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             })
                 .then(res => res.json())
@@ -247,7 +249,7 @@ export const TaxDocumentEditor: React.FC<TaxDocumentEditorProps> = ({
         };
 
         try {
-            const res = await fetch('/api/tax/documents', {
+            const res = await fetch(apiUrl('/api/tax/documents'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

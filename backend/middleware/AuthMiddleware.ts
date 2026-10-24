@@ -2,7 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_demo_only_replace_in_prod';
+// Fail closed: no fallback secret. A missing/weak/default secret makes
+// every token forgeable, so refuse to run without a strong one.
+// Generate one with: openssl rand -hex 32
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32 || JWT_SECRET.includes('change-in-production') || JWT_SECRET.includes('your-')) {
+    throw new Error('JWT_SECRET must be set to a random value of at least 32 characters');
+}
 const TOTP_SECRET_PREFIX = process.env.TOTP_SECRET_PREFIX || 'check_gen_2fa_';
 
 export interface AuthRequest extends Request {
@@ -58,6 +64,17 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
         req.user = user;
         next();
     });
+};
+
+/**
+ * Middleware requiring an admin role. Authentication alone is not
+ * authorization: admin endpoints must check the role explicitly.
+ */
+export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
 };
 
 /**

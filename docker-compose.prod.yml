@@ -1,3 +1,8 @@
+# WARNING (2026-10-24 audit): this compose file is ASPIRATIONAL and has not been
+# verified end-to-end. It references Dockerfiles/configs (Dockerfile.prod,
+# nginx/, monitoring/, redis.conf, fonts/) that are not all present in the repo.
+# The verified local stack is docker-compose.yml. Treat this file as a
+# starting point, not a deploy button.
 version: '3.8'
 
 services:
@@ -37,7 +42,7 @@ services:
       - NODE_ENV=production
       - MONGODB_URI=${MONGODB_URI}
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the environment}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -69,7 +74,7 @@ services:
       - ./mongodb-backup:/backup
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:?Set MONGO_PASSWORD in the environment}
     command: ["--replSet", "rs0", "--bind_ip_all"]
     networks:
       - check-network
@@ -112,7 +117,7 @@ services:
     ports:
       - "3002:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in the environment}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards

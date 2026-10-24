@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { apiUrl } from '../config';
 
 interface Verification {
     id: number;
@@ -36,9 +37,9 @@ const AdminDashboard: React.FC = () => {
                 const headers = { 'Authorization': `Bearer ${token}` };
 
                 const [resVerifications, resBatches, resStats] = await Promise.all([
-                    fetch('http://localhost:3001/api/admin/verifications', { headers }),
-                    fetch('http://localhost:3001/api/admin/ach-batches', { headers }),
-                    fetch('http://localhost:3001/api/admin/stats', { headers })
+                    fetch(apiUrl('/api/admin/verifications'), { headers }),
+                    fetch(apiUrl('/api/admin/ach-batches'), { headers }),
+                    fetch(apiUrl('/api/admin/stats'), { headers })
                 ]);
 
                 const verificationsData = await resVerifications.json();

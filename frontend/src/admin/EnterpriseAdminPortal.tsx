@@ -126,21 +126,19 @@ const SecurityManagement = () => <div>Security Management Content</div>;
 const BillingManagement = () => <div>Billing Management Content</div>;
 
 const EnterpriseAdminPortal: React.FC = () => {
-    const { isEnterprise, validateAdminPassword, activatePlan } = useLicense(); // Use context
+    const { isEnterprise } = useLicense();
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(isEnterprise);
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (validateAdminPassword(password)) {
-            activatePlan('enterprise', 'ADMIN_LOGIN_SUCCESS');
-            setIsAuthenticated(true);
-            setError('');
-        } else {
-            setError('❌ Access Denied: Invalid Credentials');
-            setPassword('');
-        }
+        // The old client-side password check was removed: the password was
+        // compiled into the public JS bundle and also granted a free
+        // Enterprise plan. Admin access must come from a server-issued
+        // account with the admin role (backend /api/admin/* enforces it).
+        setError('Admin sign-in is now server-side only. Sign in with a backend admin account — client-side admin passwords are no longer accepted.');
+        setPassword('');
     };
 
     const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'documents' | 'analytics' | 'security' | 'billing'>('dashboard');
