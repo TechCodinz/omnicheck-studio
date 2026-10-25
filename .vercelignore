@@ -1,0 +1,20 @@
+# Vercel upload exclusions for the frontend deployment.
+# The deployment serves the CRA frontend (root vercel.json builds frontend/
+# and serves frontend/build). The Express/SQLite backend does not run on
+# Vercel — but backend/ must NOT be excluded here: two frontend files
+# type-import from backend/ (EnterpriseAdminPortal imports
+# backend/analytics/DocumentAnalytics and backend/security/EnterpriseSecurity),
+# and the production build's type check fails without them. Verified the
+# hard way 2026-10-25: a frontend-only tree fails with TS2307.
+bofa_security_generator.py
+bofa_security_master.py
+bofa_security_uv_pro.py
+*.png
+docker-compose.yml
+docker-compose.prod.yml
+docker-compose.ultra.yml
+install.sh
+frontend/node_modules/
+frontend/build/
+node_modules/
+.git/
