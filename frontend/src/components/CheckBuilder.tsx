@@ -961,6 +961,7 @@ const CheckBuilder: React.FC = () => {
     // (on phones it covered Page 2 while scrolling). Starts open on wide
     // screens, closed on phones.
     const [aiBarOpen, setAiBarOpen] = useState(false);
+    const [aiFeedback, setAiFeedback] = useState('');
     const [panelRetracted, setPanelRetracted] = useState<boolean>(() => { try { return localStorage.getItem('oc-panel-retracted') === '1'; } catch (err) { return false; } });
     const togglePanel = (retract: boolean) => { setPanelRetracted(retract); try { localStorage.setItem('oc-panel-retracted', retract ? '1' : '0'); } catch (err) { /* storage unavailable */ } };
     const [isDraggingAiBar, setIsDraggingAiBar] = useState(false);
@@ -3278,6 +3279,89 @@ const CheckBuilder: React.FC = () => {
         }
     };
 
+    // Applies an AiDesignEngine result to the studio state and tells the user
+    // what changed (previously the explanation was only console.logged, and the
+    // theme color was dropped, so prompts appeared to do nothing).
+    const applyAiResult = (result: Awaited<ReturnType<typeof processAiPrompt>>) => {
+        setCheckStyle(result.styles.checkStyle);
+        setSelectedTexture(result.styles.texture);
+        setPaperColor(result.styles.paperColor);
+        setSelectedFont(result.styles.font);
+        setTextureOpacity(result.styles.textureOpacity);
+        if (result.styles.primaryColor) {
+            setBorderConfig(prev => ({ ...prev, color: result.styles.primaryColor }));
+        }
+        if (result.security.features.length > 0) {
+            setSecurityFeatures(prev => prev.map(f => ({
+                ...f,
+                enabled: result.security.features.includes(f.id) || f.enabled
+            })));
+        }
+        if (result.meta.bankDetected) {
+            setCheckData(prev => ({
+                ...prev,
+                bankName: result.meta.bankDetected || prev.bankName,
+                isAiActive: true
+            }));
+            setSelectedBank(result.meta.bankDetected);
+        } else {
+            setCheckData(prev => ({ ...prev, isAiActive: true }));
+        }
+        setAiFeedback(result.meta.explanation || 'Design updated.');
+        window.setTimeout(() => setAiFeedback(''), 9000);
+        console.log("AI Design Generated:", result.meta.explanation);
+    };
+
+    const handleDirectPrint = () => {
+        if (!fabricCanvas) return;
+        // Same license gate as the PDF export
+        if (!isPaid) {
+            alert('\u26a0\ufe0f Upgrade to a paid plan to print clean checks.\n\nGo to Pricing to choose a plan.');
+            return;
+        }
+        if (!canExport) {
+            alert(`\u26a0\ufe0f You\'ve reached your ${currentPlan.name} plan limit (${currentPlan.checksPerMonth} exports/month).\n\nUpgrade to export more.`);
+            return;
+        }
+        if (!useCheckExport()) {
+            alert('Print failed. Please check your plan status.');
+            return;
+        }
+        const frontData = fabricCanvas.toDataURL({ format: 'png', multiplier: 2 });
+        const backData = checkBackRef.current?.getDataURL();
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+        const printDoc = iframe.contentWindow?.document;
+        if (!printDoc) {
+            alert('Printing is not available in this browser.');
+            document.body.removeChild(iframe);
+            return;
+        }
+        printDoc.open();
+        printDoc.write('<html><head><title>Check ' + checkData.checkNumber + '</title><style>@page { size: 8.5in 3.5in; margin: 0; } body { margin: 0; } img { width: 8.5in; height: 3.5in; display: block; page-break-after: always; }</style></head><body><img src="' + frontData + '" />' + (backData ? '<img src="' + backData + '" />' : '') + '</body></html>');
+        printDoc.close();
+        iframe.onload = () => {
+            window.setTimeout(() => {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+                window.setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 1500);
+            }, 300);
+        };
+    };
+
+    const handleEmailToPayee = () => {
+        const amount = Number(checkData.amount || 0).toFixed(2);
+        const subject = encodeURIComponent(`Check #${checkData.checkNumber} - $${amount}`);
+        const body = encodeURIComponent(`Hello ${checkData.payeeName || 'Payee'},\n\nA check has been prepared for you:\n\nCheck #: ${checkData.checkNumber}\nAmount: $${amount}\nDate: ${checkData.date}\nBank: ${checkData.bankName}\n\n(Attach the exported check PDF or image to this email before sending.)`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    };
+
     const handleGenerateMobileShot = async () => {
         if (!fabricCanvas) return;
 
@@ -4760,8 +4844,8 @@ const CheckBuilder: React.FC = () => {
                                 <button onClick={handleDownloadPDF} style={dropdownItemStyle}>
                                     📄 Export Canvas Preview PDF (Instant)
                                 </button>
-                                <button style={dropdownItemStyle}>📧 Email to Payee</button>
-                                <button style={dropdownItemStyle}>🖨️ Direct Print (Pro)</button>
+                                <button onClick={handleEmailToPayee} style={dropdownItemStyle}>📧 Email to Payee</button>
+                                <button onClick={handleDirectPrint} style={dropdownItemStyle}>🖨️ Direct Print (Pro)</button>
                                 <button onClick={handleGenerateMobileShot} style={{ ...dropdownItemStyle, color: '#F97316', fontWeight: 600 }}>
                                     📸 Mobile Deposit Shot (Final)
                                 </button>
@@ -5082,35 +5166,9 @@ const CheckBuilder: React.FC = () => {
                                     const p = (checkData as any).aiPrompt;
                                     if (!p) return;
 
-                                    // Call the new AI Engine
+                                    // Call the AI Engine and apply its design
                                     const result = await processAiPrompt(p);
-
-                                    // Apply Styles
-                                    setCheckStyle(result.styles.checkStyle);
-                                    setSelectedTexture(result.styles.texture);
-                                    setPaperColor(result.styles.paperColor);
-                                    setSelectedFont(result.styles.font);
-                                    setTextureOpacity(result.styles.textureOpacity);
-
-                                    // Apply Security Features
-                                    if (result.security.features.length > 0) {
-                                        setSecurityFeatures(prev => prev.map(f => ({
-                                            ...f,
-                                            enabled: result.security.features.includes(f.id) || f.enabled
-                                        })));
-                                    }
-
-                                    // Apply Meta / Bank Data
-                                    if (result.meta.bankDetected) {
-                                        setCheckData(prev => ({
-                                            ...prev,
-                                            bankName: result.meta.bankDetected || prev.bankName,
-                                            isAiActive: true
-                                        }));
-                                        setSelectedBank(result.meta.bankDetected);
-                                    } else {
-                                        setCheckData(prev => ({ ...prev, isAiActive: true }));
-                                    }
+                                    applyAiResult(result);
                                 }
                             }}
                             placeholder="Ask AI to design (e.g. 'Blue marble Chase business check')..."
@@ -5153,42 +5211,9 @@ const CheckBuilder: React.FC = () => {
                             const p = (checkData as any).aiPrompt;
                             if (!p) return;
 
-                            // Call the new AI Engine
+                            // Call the AI Engine and apply its design
                             const result = await processAiPrompt(p);
-
-                            // Apply Styles
-                            setCheckStyle(result.styles.checkStyle);
-                            setSelectedTexture(result.styles.texture);
-                            setPaperColor(result.styles.paperColor);
-                            setSelectedFont(result.styles.font);
-                            setTextureOpacity(result.styles.textureOpacity);
-
-                            // Apply Layout (Moves) - Only if engine suggests moves
-                            // For now, we trust the engine's style mapping implicitly
-
-                            // Apply Security Features
-                            if (result.security.features.length > 0) {
-                                setSecurityFeatures(prev => prev.map(f => ({
-                                    ...f,
-                                    enabled: result.security.features.includes(f.id) || f.enabled
-                                })));
-                            }
-
-                            // Apply Meta / Bank Data
-                            if (result.meta.bankDetected) {
-                                // If a bank was detected, we might want to update the bank name too
-                                setCheckData(prev => ({
-                                    ...prev,
-                                    bankName: result.meta.bankDetected || prev.bankName,
-                                    isAiActive: true
-                                }));
-                                setSelectedBank(result.meta.bankDetected); // Helper to trigger bank-specific logic if any left
-                            } else {
-                                setCheckData(prev => ({ ...prev, isAiActive: true }));
-                            }
-
-                            // Show feedback (could use a toast, but for now console/explanation)
-                            console.log("AI Design Generated:", result.meta.explanation);
+                            applyAiResult(result);
                         }}
                         style={{
                             border: 'none', background: 'linear-gradient(135deg, #7b1fa2, #4a148c)', color: 'white', cursor: 'pointer', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold',
@@ -5211,6 +5236,20 @@ const CheckBuilder: React.FC = () => {
                         ✕
                     </button>
                 </div>
+
+                {/* AI FEEDBACK CHIP - says what the AI just changed */}
+                {aiBarOpen && aiFeedback && (
+                    <div style={{
+                        position: 'fixed', left: Math.max(12, aiBarPosition.x), top: aiBarPosition.y - 52,
+                        width: '90%', maxWidth: '600px', zIndex: 1001,
+                        background: 'rgba(14, 16, 24, 0.95)', color: '#FCD34D',
+                        border: '1px solid rgba(245,158,11,0.35)', borderLeft: '3px solid #F59E0B',
+                        borderRadius: '10px', padding: '8px 12px', fontSize: '12.5px', lineHeight: 1.45,
+                        boxShadow: '0 12px 32px rgba(0,0,0,0.5)'
+                    }}>
+                        ✨ {aiFeedback}
+                    </div>
+                )}
 
                 {/* AI BAR LAUNCHER - shown only when the bar is closed, so the
                     design stays fully visible while scrolling; tap to open. */}

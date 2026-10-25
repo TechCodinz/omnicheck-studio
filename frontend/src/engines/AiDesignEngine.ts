@@ -273,7 +273,7 @@ export const processAiPrompt = async (prompt: string): Promise<AiDesignResult> =
                 result.styles.primaryColor = hex;
                 result.styles.borderColor = hex;
                 // Auto-adjust paper to match tint
-                result.styles.paperColor = hex + '15'; // Very light tint of primary
+                result.styles.paperColor = hex + '2E'; // Light tint of primary (visible, still check-safe)
             }
             explanationPoints.push(`Applied **${name}** color theme.`);
             // Don't break immediately, might be multi-color "Red and Gold"

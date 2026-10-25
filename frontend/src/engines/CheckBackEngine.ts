@@ -179,6 +179,38 @@ export class CheckBackEngine {
             } as any));
         }
 
+        // --- Deposit-Only Styles (Business / ATM) ---
+        // Same endorsement columns as the mobile block above: the deposit style
+        // changes the restrictive endorsement wording, never the owner's layout.
+        if (style === 'business' || style === 'atm') {
+            const depositY = height * 0.68;
+            objects.push(new fabric.Text("FOR DEPOSIT ONLY", {
+                id: 'deposit-only-label',
+                left: zoneX + (zoneWidth * 0.75),
+                top: depositY,
+                fontSize: 7 * scale,
+                fontWeight: 'bold',
+                fontFamily: 'Arial',
+                fill: '#222',
+                angle: 90,
+                originX: 'center',
+                selectable: true, evented: true, hasControls: true
+            } as any));
+            if (style === 'business' && config?.accountNumber) {
+                objects.push(new fabric.Text(String(config.accountNumber), {
+                    id: 'deposit-only-account',
+                    left: zoneX + (zoneWidth * 0.85),
+                    top: depositY,
+                    fontSize: 7 * scale,
+                    fontFamily: 'Arial',
+                    fill: '#222',
+                    angle: 90,
+                    originX: 'center',
+                    selectable: true, evented: true, hasControls: true
+                } as any));
+            }
+        }
+
         // --- Warning Text (original column; centred so it stays on-page) ---
         objects.push(new fabric.Text("DO NOT WRITE, STAMP OR SIGN BELOW THIS LINE", {
             id: 'endorse-warning', // UNIQUE ID
