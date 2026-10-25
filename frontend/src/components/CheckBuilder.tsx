@@ -3928,9 +3928,9 @@ const CheckBuilder: React.FC = () => {
     }, [fabricCanvas, renderCheck]);
     // ============== RENDER ==============
     return (
-        <div style={containerStyle}>
+        <div className="oc-builder-root" style={containerStyle}>
             {/* LEFT SIDEBAR */}
-            <div style={sidebarStyle}>
+            <div className="oc-builder-panel" style={sidebarStyle}>
                 <div style={headerStyle}>
                     <span style={{ fontSize: 20 }}>🏦</span>
                     <div>

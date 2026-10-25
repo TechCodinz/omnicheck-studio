@@ -456,7 +456,7 @@ export const AnalyticsDashboard: React.FC<DashboardProps> = ({
 
     return (
         <div
-            className="analytics-dashboard"
+            className="analytics-dashboard oc-card-page"
             style={{
                 padding: '24px',
                 background: theme === 'dark' ? '#111827' : '#F3F4F6',

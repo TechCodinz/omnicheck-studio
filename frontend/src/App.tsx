@@ -3,7 +3,7 @@
  * Full-Featured Enterprise Application with Advanced UI
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import CheckBuilder from './components/CheckBuilder';
 import EnterpriseAdminPortal from './admin/EnterpriseAdminPortal';
@@ -35,9 +35,26 @@ interface DeliveryMethod {
 
 // CheckDeliveryOptions is now imported from ./components/DeliveryModal
 
+// ============== RESPONSIVE HOOK ==============
+
+const MOBILE_BREAKPOINT = 920;
+
+const useIsMobile = (): boolean => {
+    const [isMobile, setIsMobile] = useState<boolean>(
+        typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false
+    );
+    useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+    return isMobile;
+};
+
 // ============== SIDEBAR COMPONENT ==============
 
-const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ collapsed, onToggle }) => {
+const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void; mobile?: boolean; open?: boolean; onNavigate?: () => void }> = ({ collapsed, onToggle, mobile = false, open = true, onNavigate }) => {
+    const effCollapsed = mobile ? false : collapsed;
     const location = useLocation();
     const { currentPlan, isPaid, checksRemaining, license } = useLicense();
     const { isAdmin } = useAuth();
@@ -58,21 +75,23 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
 
     return (
         <div style={{
-            width: collapsed ? '60px' : '220px',
+            width: mobile ? '248px' : (effCollapsed ? '60px' : '220px'),
+            transform: mobile ? (open ? 'translateX(0)' : 'translateX(-105%)') : undefined,
+            boxShadow: mobile && open ? '24px 0 60px rgba(0,0,0,0.55)' : undefined,
             background: 'linear-gradient(180deg, #1a1f2e 0%, #0d1117 100%)',
             borderRight: '1px solid rgba(255,255,255,0.1)',
             display: 'flex',
             flexDirection: 'column',
-            transition: 'width 0.3s ease',
+            transition: mobile ? 'transform 0.28s ease' : 'width 0.3s ease',
             position: 'fixed',
             left: 0,
             top: 0,
             height: '100vh',
-            zIndex: 100
+            zIndex: mobile ? 200 : 100
         }}>
             {/* Logo */}
             <div style={{
-                padding: collapsed ? '16px 12px' : '20px 16px',
+                padding: effCollapsed ? '16px 12px' : '20px 16px',
                 borderBottom: '1px solid rgba(255,255,255,0.1)',
                 display: 'flex',
                 alignItems: 'center',
@@ -88,7 +107,7 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
                     justifyContent: 'center',
                     fontSize: '18px'
                 }}>💰</div>
-                {!collapsed && (
+                {!effCollapsed && (
                     <div>
                         <div style={{ color: '#fff', fontWeight: '700', fontSize: '16px' }}>OmniCheck Pro</div>
                         <div style={{ color: '#6B7280', fontSize: '11px' }}>Enterprise Edition</div>
@@ -96,8 +115,8 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
                 )}
             </div>
 
-            {/* Toggle Button */}
-            <button onClick={onToggle} style={{
+            {/* Toggle Button (desktop only - the mobile drawer closes via backdrop or navigation) */}
+            {!mobile && (<button onClick={onToggle} style={{
                 position: 'absolute',
                 right: '-12px',
                 top: '70px',
@@ -113,17 +132,17 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
                 justifyContent: 'center',
                 fontSize: '10px'
             }}>
-                {collapsed ? '→' : '←'}
-            </button>
+                {effCollapsed ? '→' : '←'}
+            </button>)}
 
             {/* Navigation */}
             <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
                 {navItems.map(item => (
-                    <Link key={item.path} to={item.path} style={{
+                    <Link key={item.path} to={item.path} onClick={onNavigate} style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '12px',
-                        padding: collapsed ? '12px 16px' : '10px 12px',
+                        padding: effCollapsed ? '12px 16px' : '10px 12px',
                         marginBottom: '4px',
                         borderRadius: '8px',
                         textDecoration: 'none',
@@ -132,7 +151,7 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
                         transition: 'all 0.2s ease'
                     }}>
                         <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                        {!collapsed && (
+                        {!effCollapsed && (
                             <>
                                 <span style={{ flex: 1, fontSize: '13px', fontWeight: location.pathname === item.path ? '600' : '400' }}>
                                     {item.label}
@@ -154,7 +173,7 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
             </nav>
 
             {/* Footer — Plan Status */}
-            {!collapsed && (
+            {!effCollapsed && (
                 <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                     <div style={{
                         background: isPaid
@@ -207,6 +226,8 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
 // Wrapper to detect route and conditionally render layout
 const AppContent: React.FC = () => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const isMobile = useIsMobile();
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
     const { user, isAuthenticated, isAdmin, logout, openAuthModal } = useAuth();
 
@@ -223,31 +244,53 @@ const AppContent: React.FC = () => {
             minHeight: '100vh',
             background: 'linear-gradient(135deg, #0a0e14 0%, #151b24 50%, #1d2430 100%)'
         }}>
-            <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+            {isMobile && drawerOpen && (
+                <div onClick={() => setDrawerOpen(false)} style={{
+                    position: 'fixed', inset: 0, background: 'rgba(3, 6, 12, 0.62)',
+                    backdropFilter: 'blur(2px)', zIndex: 150
+                }} />
+            )}
+            <Sidebar
+                collapsed={sidebarCollapsed}
+                onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+                mobile={isMobile}
+                open={!isMobile || drawerOpen}
+                onNavigate={() => setDrawerOpen(false)}
+            />
 
             {/* Main Content Area */}
-            <div style={{ marginLeft: sidebarCollapsed ? '60px' : '220px', transition: 'margin-left 0.3s ease' }}>
+            <div style={{ marginLeft: isMobile ? 0 : (sidebarCollapsed ? '60px' : '220px'), transition: 'margin-left 0.3s ease' }}>
                 {/* Top Bar */}
                 <header style={{
                     background: 'rgba(13, 17, 23, 0.82)',
                     backdropFilter: 'blur(20px)',
                     WebkitBackdropFilter: 'blur(20px)',
                     borderBottom: '1px solid rgba(255,255,255,0.08)',
-                    padding: '12px 28px',
+                    padding: isMobile ? '10px 14px' : '12px 28px',
                     display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: isMobile ? '10px' : undefined,
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     position: 'sticky',
                     top: 0,
                     zIndex: 50
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '16px', flex: isMobile ? '1 1 auto' : undefined, minWidth: 0 }}>
+                        {isMobile && (
+                            <button onClick={() => setDrawerOpen(true)} aria-label="Open menu" style={{
+                                width: '40px', height: '40px', flex: '0 0 auto',
+                                background: '#151b24', border: '1px solid rgba(255, 255, 255, 0.12)',
+                                borderRadius: '10px', color: '#fff', cursor: 'pointer', fontSize: '17px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>☰</button>
+                        )}
+                        <div style={{ position: 'relative', flex: isMobile ? '1 1 auto' : undefined, minWidth: 0 }}>
                             <input
                                 type="text"
                                 placeholder="🔍 Search checks, templates, payees..."
                                 style={{
-                                    width: '320px',
+                                    width: isMobile ? '100%' : '320px',
                                     padding: '10px 42px 10px 16px',
                                     background: '#151b24',
                                     border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -273,7 +316,7 @@ const AppContent: React.FC = () => {
                             </span>
                         </div>
                         <div style={{
-                            display: 'flex',
+                            display: isMobile ? 'none' : 'flex',
                             alignItems: 'center',
                             gap: '6px',
                             fontSize: '11px',
@@ -288,9 +331,9 @@ const AppContent: React.FC = () => {
                             API Online • 14ms
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '9px' : '14px' }}>
                         <button onClick={() => setDeliveryModalOpen(true)} style={{
-                            padding: '9px 18px',
+                            padding: isMobile ? '9px 12px' : '9px 18px',
                             background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
                             border: 'none',
                             borderRadius: '9px',
@@ -350,7 +393,7 @@ const AppContent: React.FC = () => {
                                 }}>
                                     {userInitial}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                                <div style={{ display: isMobile ? 'none' : 'flex', flexDirection: 'column', textAlign: 'left' }}>
                                     <span style={{ color: '#F3F4F6', fontSize: '12px', fontWeight: 600, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {user.email}
                                     </span>

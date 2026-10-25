@@ -305,7 +305,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
     };
 
     return (
-        <div style={{
+        <div className="oc-overlay-page" style={{
             position: 'fixed',
             inset: 0,
             zIndex: 9999,
@@ -374,7 +374,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
             </div>
 
             {/* Navigation Tabs */}
-            <div style={{
+            <div className="oc-tabscroll" style={{
                 display: 'flex',
                 gap: 8,
                 padding: '12px 28px',

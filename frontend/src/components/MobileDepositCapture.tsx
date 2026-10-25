@@ -160,7 +160,7 @@ export const MobileDepositCapture: React.FC = () => {
     };
 
     return (
-        <div style={{
+        <div className="oc-page-pad" style={{
             padding: '32px 40px',
             maxWidth: '1280px',
             margin: '0 auto',

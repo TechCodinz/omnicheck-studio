@@ -493,3 +493,42 @@ h4 {
   border-color: rgba(249, 115, 22, 0.3);
   box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.5), 0 0 20px rgba(249, 115, 22, 0.15);
 }
+/* ============================================================
+   OmniCheck Responsive System — 2026-10-25
+   Professional small-screen behaviour for the inline-styled UI.
+   Desktop rendering is untouched: every rule below is either a
+   global safety guard or scoped to <= 920px.
+   ============================================================ */
+html, body, #root { overflow-x: clip; }
+img, video, canvas, svg, iframe { max-width: 100%; }
+
+.oc-overlay-page { }
+.oc-tabscroll { }
+.oc-page-pad { }
+.oc-card-page { }
+.oc-builder-root { }
+.oc-builder-panel { }
+
+@media (max-width: 920px) {
+  /* Prevent iOS Safari focus zoom on form fields */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Full-screen overlay pages scroll internally on small screens */
+  .oc-overlay-page { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+
+  /* Wide step/tab bars scroll horizontally instead of crushing */
+  .oc-tabscroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .oc-tabscroll::-webkit-scrollbar { display: none; }
+  .oc-tabscroll > * { flex: 0 0 auto; }
+
+  /* Page containers: sane side padding on phones */
+  .oc-page-pad { padding: 20px 16px !important; }
+  .oc-card-page { padding: 16px !important; border-radius: 12px !important; }
+
+  /* CheckBuilder: stack the control panel above the canvas and let
+     the fixed-format canvas scroll inside its own region */
+  .oc-builder-root { flex-direction: column !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+  .oc-builder-panel { width: 100% !important; min-width: 0 !important; max-height: 52vh; overflow-y: auto; border-right: none !important; border-bottom: 1px solid #E2E8F0; }
+  .oc-builder-panel > div { max-height: none !important; }
+  .canvas-wrapper-scroll { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; padding-bottom: 32px !important; }
+}

@@ -187,7 +187,7 @@ export const DocumentTemplateGallery: React.FC<DocumentTemplateGalleryProps> = (
     }, [uploadFile, uploadMetadata, onUploadDocument]);
 
     return (
-        <div style={{ background: colors.bg, borderRadius: '16px', padding: '24px', minHeight: '600px' }}>
+        <div className="oc-card-page" style={{ background: colors.bg, borderRadius: '16px', padding: '24px', minHeight: '600px' }}>
             <div style={{ marginBottom: '24px' }}>
                 <h2 style={{ margin: '0 0 4px', color: colors.text, fontSize: '22px', fontWeight: '700' }}>
                     🌍 Global Document Templates

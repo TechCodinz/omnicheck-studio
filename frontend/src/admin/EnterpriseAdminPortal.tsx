@@ -155,7 +155,7 @@ export const EnterpriseAdminPortal: React.FC = () => {
     }
 
     return (
-        <div style={{
+        <div className="oc-page-pad" style={{
             padding: '32px 40px',
             maxWidth: '1440px',
             margin: '0 auto',
