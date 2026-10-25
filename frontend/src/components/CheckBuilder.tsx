@@ -3730,6 +3730,15 @@ const CheckBuilder: React.FC = () => {
         return data;
     };
 
+    const scrollToPage = (side: 'front' | 'back') => {
+        if (window.innerWidth <= 920) {
+            document.getElementById(side === 'front' ? 'oc-page-front' : 'oc-page-back')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+        const container = document.querySelector('.canvas-wrapper-scroll');
+        if (container) container.scrollTop = side === 'front' ? 0 : container.scrollHeight;
+    };
+
     const handleDownloadPDF = async () => {
         if (!fabricCanvas) return;
 
@@ -5088,16 +5097,8 @@ const CheckBuilder: React.FC = () => {
                         <span style={{ color: '#475569', margin: '0 4px', fontSize: '10px' }}>|</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button style={toolBtnStyle} onClick={() => {
-                            const container = document.querySelector('.canvas-wrapper-scroll');
-                            if (container) container.scrollTop = 0;
-                            document.getElementById('oc-page-front')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }}>↑ Front</button>
-                        <button style={toolBtnStyle} onClick={() => {
-                            const container = document.querySelector('.canvas-wrapper-scroll');
-                            if (container) container.scrollTop = container.scrollHeight;
-                            document.getElementById('oc-page-back')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }}>↓ Back</button>
+                        <button style={toolBtnStyle} onClick={() => scrollToPage('front')}>↑ Front</button>
+                        <button style={toolBtnStyle} onClick={() => scrollToPage('back')}>↓ Back</button>
                         <span style={{ color: '#475569', margin: '0 2px', fontSize: '10px' }}>|</span>
                         <button style={toolBtnStyle} onClick={() => stepZoom(-1)}>−</button>
                         <button style={toolBtnStyle} onClick={() => stepZoom(1)}>+</button>
