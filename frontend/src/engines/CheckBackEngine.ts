@@ -49,9 +49,6 @@ export class CheckBackEngine {
         // 3. Security Box (Left Side - All elements unlocked)
         this.addUnlockedSecurityBox(width, height, scale, objects);
 
-        // 4. Fed Reserve Text (Far Left - Draggable)
-        this.addUnlockedLegalText(width, height, scale, objects);
-
         return objects;
     }
 
@@ -89,20 +86,35 @@ export class CheckBackEngine {
         const zoneWidth = 1.5 * 72 * scale;
         const zoneX = width - zoneWidth;
 
+        // Column order inside the strip, matching real check backs
+        // (owner's reference samples): divider | RESERVED | DO NOT WRITE |
+        // endorsement lines with the mobile-deposit column between them |
+        // ENDORSE HERE at the far edge. The lines run most of the height,
+        // the X sits at the top end of the first line, and the two notice
+        // texts are centred in their own columns - previously the X, the
+        // lines and the texts were placed independently and collided.
+        const colReserved = zoneX - (12 * scale);
+        const colWarning = zoneX + (16 * scale);
+        const line3X = zoneX + (34 * scale);
+        const line2X = zoneX + (50 * scale);
+        const colMobile = zoneX + (63 * scale);
+        const line1X = zoneX + (76 * scale);
+        const colHeader = width - (12 * scale);
+        const lineTop = 40 * scale;
+        const lineBottom = height - (24 * scale);
+
         // --- Divider Line ---
         objects.push(new fabric.Line([zoneX, 0, zoneX, height], {
             id: 'endorse-divider', // UNIQUE ID
-            stroke: '#999', strokeWidth: 1.2 * scale,
+            stroke: '#444', strokeWidth: 2.5 * scale,
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // --- Endorsement Elements ---
-
-        // "ENDORSE HERE" Header
+        // --- "ENDORSE HERE" Header (rightmost column, from the top) ---
         objects.push(new fabric.Text("ENDORSE HERE", {
             id: 'endorse-header', // UNIQUE ID
-            left: width - (15 * scale),
-            top: 40 * scale,
+            left: colHeader,
+            top: 24 * scale,
             fontSize: 10 * scale,
             fontWeight: 'bold',
             fontFamily: 'Arial',
@@ -111,12 +123,11 @@ export class CheckBackEngine {
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // Signature X
-        const xPosX = zoneX + (26 * scale);
+        // --- Signature X (top end of the first endorsement line) ---
         objects.push(new fabric.Text("X", {
             id: 'endorse-x', // UNIQUE ID
-            left: xPosX - (15 * scale),
-            top: 60 * scale,
+            left: line1X - (6 * scale),
+            top: 12 * scale,
             fontSize: 16 * scale,
             fontFamily: 'Arial',
             fill: '#000',
@@ -124,42 +135,21 @@ export class CheckBackEngine {
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // 3 Signature Lines
-        const lineStartTop = 60 * scale;
-        const lineEndTop = height * 0.55;
-
-        for (let i = 0; i < 3; i++) {
-            const lx = xPosX + (i * 26 * scale);
-            objects.push(new fabric.Line([lx, lineStartTop, lx, lineEndTop], {
+        // --- 3 Endorsement Lines (long, evenly spaced across the strip) ---
+        [line3X, line2X, line1X].forEach((lx, i) => {
+            objects.push(new fabric.Line([lx, lineTop, lx, lineBottom], {
                 id: `endorse-line-${i}`, // UNIQUE ID
                 stroke: '#ccc', strokeWidth: 1.5 * scale,
                 selectable: true, evented: true, hasControls: true
             } as any));
-        }
+        });
 
-        // --- Mobile Deposit Area (Conditionally Rendered) ---
+        // --- Mobile Deposit (checkbox at the top of its column, text centred) ---
         if (style === 'mobile') {
-            const mobileY = height * 0.68;
-
-            // Instruction: "CHECK HERE IF MOBILE DEPOSIT"
-            objects.push(new fabric.Text("CHECK HERE IF MOBILE DEPOSIT", {
-                id: 'mobile-instruction', // UNIQUE ID
-                left: zoneX + (39 * scale),
-                top: mobileY,
-                fontSize: 7 * scale,
-                fontWeight: 'bold',
-                fontFamily: 'Arial',
-                fill: '#222',
-                angle: 90,
-                originX: 'center',
-                selectable: true, evented: true, hasControls: true
-            } as any));
-
-            // Checkbox: Standard Square
             objects.push(new fabric.Rect({
                 id: 'mobile-checkbox', // UNIQUE ID
-                left: zoneX + (65 * scale),
-                top: mobileY,
+                left: colMobile - (8 * scale),
+                top: 48 * scale,
                 width: 16 * scale,
                 height: 16 * scale,
                 fill: 'transparent',
@@ -170,13 +160,26 @@ export class CheckBackEngine {
                 originY: 'center',
                 selectable: true, evented: true, hasControls: true
             } as any));
+
+            objects.push(new fabric.Text("CHECK HERE IF MOBILE DEPOSIT", {
+                id: 'mobile-instruction', // UNIQUE ID
+                left: colMobile,
+                top: height * 0.58,
+                fontSize: 7 * scale,
+                fontWeight: 'bold',
+                fontFamily: 'Arial',
+                fill: '#222',
+                angle: 90,
+                originX: 'center',
+                selectable: true, evented: true, hasControls: true
+            } as any));
         }
 
-        // Warning Text (Always present)
-        objects.push(new fabric.Text("DO NOT WRITE, SIGN OR STAMP BELOW THIS LINE", {
+        // --- Warning Text (own column left of the lines, centred) ---
+        objects.push(new fabric.Text("DO NOT WRITE, STAMP OR SIGN BELOW THIS LINE", {
             id: 'endorse-warning', // UNIQUE ID
-            left: width - (17 * scale),
-            top: height - (89 * scale),
+            left: colWarning,
+            top: height / 2,
             fontSize: 6 * scale,
             fontWeight: '800',
             fontFamily: 'Arial',
@@ -186,10 +189,11 @@ export class CheckBackEngine {
             selectable: true, evented: true, hasControls: true
         } as any));
 
+        // --- Reserved Text (column beside the divider, centred) ---
         objects.push(new fabric.Text("RESERVED FOR FINANCIAL INSTITUTION USE*", {
             id: 'endorse-reserved', // UNIQUE ID
-            left: zoneX + (11 * scale),
-            top: height - (63 * scale),
+            left: colReserved,
+            top: height / 2,
             fontSize: 5 * scale,
             fontFamily: 'Arial',
             fill: '#888',
@@ -200,12 +204,18 @@ export class CheckBackEngine {
     }
 
     private static addUnlockedSecurityBox(width: number, height: number, scale: number, objects: fabric.Object[]): void {
-        const boxLeft = 60 * scale;
-        const boxTop = 40 * scale;
-        const boxW = 120 * scale;
-        const boxH = height * 0.82;
+        // The security box from the reference back: padlock certification
+        // line, the alteration warning, the feature list with descriptions,
+        // and the Reg. C.C. line - laid out as columns inside the frame
+        // (the box is presented rotated, like the sample's landscape form).
+        const boxLeft = 28 * scale;
+        const boxTop = 26 * scale;
+        const boxW = 205 * scale;
+        const boxH = height - (52 * scale);
+        const colY = boxTop + (boxH / 2);
+        const col = (offset: number) => boxLeft + (offset * scale);
 
-        // Security Box Rect
+        // Frame
         objects.push(new fabric.Rect({
             id: 'security-box-frame', // UNIQUE ID
             left: boxLeft, top: boxTop, width: boxW, height: boxH,
@@ -213,61 +223,47 @@ export class CheckBackEngine {
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // "SECURITY FEATURES" Header
-        objects.push(new fabric.Text("SECURITY FEATURES", {
-            id: 'security-header', // UNIQUE ID
-            left: boxLeft + (25 * scale),
-            top: height / 2,
-            fontSize: 9 * scale,
-            fontWeight: 'bold',
-            fontFamily: 'Arial',
-            fill: '#111',
-            angle: 90,
-            originX: 'center',
-            originY: 'center',
-            selectable: true, evented: true, hasControls: true
-        } as any));
-
-        // Refined detailed feature list
-        const features = [
-            "• AUTHENTIC DOCUMENT WATERMARK",
-            "• ROUTING NUMBER VERIFICATION",
-            "• SECURITY SCREEN BACKDROP",
-            "• MICROPRINTING ALONG LINES (MP)",
-            "• CHEMICAL SENSITIVE PAPER STOCK",
-            "• FLUORESCENT FIBER TECHNOLOGY"
-        ];
-
-        features.forEach((f, i) => {
-            objects.push(new fabric.Text(f, {
-                id: `security-feature-${i}`, // UNIQUE ID
-                left: boxLeft + (44 * scale) + (i * 13 * scale),
-                top: height / 2,
-                fontSize: 6.5 * scale,
+        const colText = (id: string, text: string, offset: number, fontSize: number, fontWeight: string, fill: string) => {
+            objects.push(new fabric.Text(text, {
+                id,
+                left: col(offset),
+                top: colY,
+                fontSize: fontSize * scale,
+                fontWeight,
                 fontFamily: 'Arial',
-                fontWeight: '600',
-                fill: '#222',
+                fill,
                 angle: 90,
                 originX: 'center',
                 originY: 'center',
                 selectable: true, evented: true, hasControls: true
             } as any));
+        };
+
+        // Padlock certification line + alteration warning
+        colText('security-header',
+            "Padlock design is a certification mark of the Check Payment Systems Association",
+            20, 6.5, 'normal', '#111');
+        colText('security-warning',
+            "Warning: Absence of the following Security Features may indicate alteration",
+            36, 6.5, 'bold', '#111');
+
+        // Feature list: name + description columns, as printed on the sample
+        const features: Array<[string, string]> = [
+            ["MP Microprint", "Tiny type on front and back of document fills in to form solid lines when scanned or photocopied."],
+            ["Security Pantograph", "Copy resistant security pantograph on front of document discourages clear duplication."],
+            ["Warning Bands/MP Padlock Logos", "Warn receivers to be aware of detailed security features."],
+            ["Security Screen Backer", "\"Original Document\" text, and weave pattern visible on back of check, will not appear if scanned or photocopied."]
+        ];
+        features.forEach(([name, desc], i) => {
+            const base = 52 + (i * 30);
+            colText(`security-feature-${i}`, name, base, 6.5, '600', '#111');
+            colText(`security-feature-desc-${i}`, desc, base + 13, 5.2, 'normal', '#222');
         });
+
+        // Reg. C.C. line (bottom of the box on the sample)
+        colText('security-regcc',
+            "* FEDERAL RESERVE BOARD OF GOVERNORS REG. C.C.",
+            178, 6, 'bold', '#111');
     }
 
-    private static addUnlockedLegalText(width: number, height: number, scale: number, objects: fabric.Object[]): void {
-        objects.push(new fabric.Text("FEDERAL RESERVE REG CC COMPLIANT", {
-            id: 'legal-text-compliance', // UNIQUE ID
-            left: 15 * scale,
-            top: height / 2,
-            fontSize: 5 * scale,
-            fontWeight: 'bold',
-            fontFamily: 'Arial',
-            fill: '#999',
-            angle: 90,
-            originX: 'center',
-            originY: 'center',
-            selectable: true, evented: true, hasControls: true
-        } as any));
-    }
 }
