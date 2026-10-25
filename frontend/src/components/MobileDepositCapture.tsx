@@ -239,7 +239,7 @@ export const MobileDepositCapture: React.FC = () => {
             </div>
 
             {/* Main Studio Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '28px', marginBottom: '40px' }}>
+            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '28px', marginBottom: '40px' }}>
 
                 {/* Left Column: Interactive Viewfinders */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -430,7 +430,7 @@ export const MobileDepositCapture: React.FC = () => {
                     </div>
 
                     {/* Image Quality Analysis (IQA) Telemetry */}
-                    <div style={{
+                    <div className="oc-gcards" style={{
                         background: 'rgba(255, 255, 255, 0.03)',
                         border: '1px solid rgba(255, 255, 255, 0.08)',
                         borderRadius: '14px',
@@ -504,7 +504,7 @@ export const MobileDepositCapture: React.FC = () => {
                             </select>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
+                        <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#9CA3AF', marginBottom: '8px' }}>
                                     Check Amount (USD)

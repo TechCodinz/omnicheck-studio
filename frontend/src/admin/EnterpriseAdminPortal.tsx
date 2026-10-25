@@ -237,7 +237,7 @@ export const EnterpriseAdminPortal: React.FC = () => {
             </div>
 
             {/* Metric KPI Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+            <div className="oc-gcards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
                 <div style={{
                     background: 'linear-gradient(145deg, #161D26 0%, #0E131A 100%)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -354,7 +354,7 @@ export const EnterpriseAdminPortal: React.FC = () => {
 
             {/* Tab 1: Mission Control Telemetry */}
             {activeTab === 'mission_control' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '28px' }}>
+                <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '28px' }}>
                     {/* Clearinghouse Status */}
                     <div style={{
                         background: 'linear-gradient(145deg, #161D26 0%, #0E131A 100%)',

@@ -543,3 +543,21 @@ img, video, canvas, svg, iframe { max-width: 100%; }
      (left = innerWidth/2 - 300), which is off-screen on phones */
   .oc-aibar { left: 12px !important; right: 12px; width: auto !important; max-width: none !important; }
 }
+
+/* All-pages mobile layout classes (applied across routed pages) */
+.oc-g2 { }
+.oc-gcards { }
+.oc-fluid { }
+@media (max-width: 920px) {
+  /* Two-column splits stack vertically, full width */
+  .oc-g2 { grid-template-columns: 1fr !important; }
+  /* Card/stat grids: 2 across on tablets/large phones */
+  .oc-gcards { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Fixed-width panels/modals fit the screen */
+  .oc-fluid { width: calc(100vw - 24px) !important; max-width: 100% !important; }
+  /* Wide tables scroll inside themselves instead of breaking the page */
+  main table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+@media (max-width: 560px) {
+  .oc-gcards { grid-template-columns: 1fr !important; }
+}

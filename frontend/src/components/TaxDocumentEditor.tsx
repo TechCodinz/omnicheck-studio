@@ -757,7 +757,7 @@ export const TaxDocumentEditor: React.FC<TaxDocumentEditorProps> = ({
 
             {/* Content Area */}
             {state.documentType && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+                <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
                     {/* Left Column: Editor/Customizer */}
                     <div>
                         {editorTab === 'fields' ? (

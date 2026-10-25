@@ -84,7 +84,7 @@ const PricingPage: React.FC = () => {
             )}
 
             {/* Plan Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
+            <div className="oc-gcards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
                 {PLANS.map((p: PlanDef) => {
                     const isPopular = p.id === 'professional';
                     const isCurrent = license.planId === p.id;
@@ -197,7 +197,7 @@ const PricingPage: React.FC = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backdropFilter: 'blur(8px)'
                 }}>
-                    <div style={{
+                    <div className="oc-fluid" style={{
                         background: '#1F2937', borderRadius: '20px', padding: '32px',
                         width: '520px', maxHeight: '90vh', overflowY: 'auto',
                         border: '1px solid #374151', boxShadow: '0 25px 80px rgba(0,0,0,0.5)'

@@ -189,7 +189,7 @@ export const BlockchainVerificationPanel: React.FC<BlockchainVerificationPanelPr
             }}>
                 Select Blockchain
             </label>
-            <div style={{
+            <div className="oc-gcards" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: '12px'
@@ -279,7 +279,7 @@ export const BlockchainVerificationPanel: React.FC<BlockchainVerificationPanelPr
             <h4 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: '14px', fontWeight: '600' }}>
                 📝 Check Details
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                     <div style={{ fontSize: '12px', color: colors.textSecondary }}>Check Number</div>
                     <div style={{ fontWeight: '500', color: colors.text }}>{checkData.checkNumber}</div>

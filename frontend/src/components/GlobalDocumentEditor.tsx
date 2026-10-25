@@ -249,7 +249,7 @@ export const GlobalDocumentEditor: React.FC<GlobalDocumentEditorProps> = ({ docu
                 </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px' }}>
+            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px' }}>
                 {/* Preview */}
                 <div style={{ background: colors.card, borderRadius: '12px', padding: '20px', border: `1px solid ${colors.border}` }}>
                     <h3 style={{ margin: '0 0 12px', color: colors.text, fontSize: '14px' }}>📄 Preview</h3>

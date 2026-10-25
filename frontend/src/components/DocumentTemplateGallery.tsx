@@ -307,7 +307,7 @@ export const DocumentTemplateGallery: React.FC<DocumentTemplateGalleryProps> = (
                     </div>
 
                     {/* Metadata Form */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                    <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                         <div>
                             <label style={{ display: 'block', color: colors.text, fontSize: '13px', marginBottom: '6px' }}>Template Name *</label>
                             <input type="text" value={uploadMetadata.name} onChange={e => setUploadMetadata({ ...uploadMetadata, name: e.target.value })}

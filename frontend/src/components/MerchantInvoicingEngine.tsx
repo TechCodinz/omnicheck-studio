@@ -439,7 +439,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                 Client Information & Invoicing Terms
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '12px', color: '#94A3B8', marginBottom: 6 }}>Client Company / Payor Name</label>
                                     <input
@@ -519,7 +519,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                 <label style={{ display: 'block', fontSize: '12px', color: '#38BDF8', fontWeight: 600, marginBottom: 8 }}>
                                     Where Should Payer Funds Settle? (Receiver Account Destination)
                                 </label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                                <div className="oc-gcards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                                     {[
                                         { id: 'RECEIVER_BANK', label: '🏦 Direct Bank (ACH/Wire)', sub: `${receiverBank.bankName.slice(0, 16)}...` },
                                         { id: 'SWIFT_INTERNATIONAL', label: '🌐 SWIFT International', sub: `BIC: ${receiverSwift.bic}` },
@@ -579,7 +579,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, margin: '20px 0' }}>
+                            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, margin: '20px 0' }}>
                                 <div>
                                     <div style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>Billed To:</div>
                                     <div style={{ fontWeight: 700, fontSize: '13px', marginTop: 4 }}>{clientName}</div>
@@ -632,7 +632,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                 </div>
 
                                 {/* Payment Method Selector */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24 }}>
+                                <div className="oc-gcards" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24 }}>
                                     {[
                                         { id: 'CARD', label: '💳 Card', sub: 'Visa / MC / Amex' },
                                         { id: 'PLAID', label: '⚡ Plaid Bank', sub: 'Instant OAuth' },
@@ -730,7 +730,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                             Enter the routing number (9 digits with ABA Mod-10 checksum) and account number. The system will dispatch two small trial micro-deposits to authenticate ownership.
                                         </div>
 
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                                        <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
                                             <div>
                                                 <label style={{ fontSize: '11px', color: '#94A3B8' }}>9-Digit ABA Routing Number</label>
                                                 <input
@@ -773,7 +773,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                 {checkoutMethod === 'SWIFT' && (
                                     <div style={{ padding: '20px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                                         <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: 8, color: '#38BDF8' }}>SWIFT / Cross-Border Wire Transfer</div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14, marginBottom: 16 }}>
+                                        <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14, marginBottom: 16 }}>
                                             <div>
                                                 <label style={{ fontSize: '11px', color: '#94A3B8' }}>SWIFT / BIC Code</label>
                                                 <input
@@ -875,7 +875,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                         {/* Direct Bank Destination */}
                         <div style={{ padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: 12, color: '#10B981' }}>1. Primary Domestic Bank (FedACH Direct Deposit)</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                 <div>
                                     <label style={{ fontSize: '11px', color: '#94A3B8' }}>Financial Institution Name</label>
                                     <input
@@ -900,7 +900,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                         {/* SWIFT International */}
                         <div style={{ padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: 12, color: '#38BDF8' }}>2. Global SWIFT / Wire Payout Account</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+                            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
                                 <div>
                                     <label style={{ fontSize: '11px', color: '#94A3B8' }}>SWIFT / BIC Code</label>
                                     <input
@@ -925,7 +925,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                         {/* Digital Tag Handles */}
                         <div style={{ padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', marginBottom: 20 }}>
                             <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: 12, color: '#A855F7' }}>3. Instant Digital Tag Receivers</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                 <div>
                                     <label style={{ fontSize: '11px', color: '#94A3B8' }}>Zelle Mobile / Email</label>
                                     <input
@@ -960,7 +960,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                 {activeTab === 'LEDGER' && (
                     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
                         {/* KPI Cards */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+                        <div className="oc-gcards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
                             {[
                                 { label: 'Total Invoiced Volume', val: `$${invoices.reduce((s, i) => s + i.amount, 0).toFixed(2)}`, color: '#38BDF8' },
                                 { label: 'Settled Receipts', val: `$${invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + i.amount, 0).toFixed(2)}`, color: '#34D399' },
@@ -1035,7 +1035,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                     alignItems: 'center',
                     justifyContent: 'center'
                 }}>
-                    <div style={{
+                    <div className="oc-fluid" style={{
                         width: '460px',
                         background: '#0F172A',
                         border: '1px solid #334155',
@@ -1056,7 +1056,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                             </div>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+                        <div className="oc-g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
                             <div>
                                 <label style={{ fontSize: '11px', color: '#94A3B8' }}>Deposit 1 ($0.XX)</label>
                                 <input

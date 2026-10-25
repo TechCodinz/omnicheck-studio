@@ -510,7 +510,7 @@ export const AnalyticsDashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Charts and Predictions */}
-            <div style={{
+            <div className="oc-g2" style={{
                 display: 'grid',
                 gridTemplateColumns: '2fr 1fr',
                 gap: '24px',
