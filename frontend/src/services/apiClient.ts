@@ -99,7 +99,7 @@ export const apiClient = {
     },
 
     // Invoicing & Merchant Payments
-    async listInvoices() {
+    async listInvoices(): Promise<any> {
         try {
             const res = await fetch(apiUrl('/api/invoices'), { headers: createAuthHeaders() });
             return await res.json();
@@ -108,7 +108,7 @@ export const apiClient = {
         }
     },
 
-    async createInvoice(data: any) {
+    async createInvoice(data: any): Promise<any> {
         try {
             const res = await fetch(apiUrl('/api/invoices'), {
                 method: 'POST',

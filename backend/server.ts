@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -74,7 +74,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Health check (no auth, no data)
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: Request, res: Response) => {
     res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -82,7 +82,7 @@ app.get('/api/health', (req, res) => {
 import db from './db/Database';
 
 // Routes
-app.get('/api/templates', (req, res) => {
+app.get('/api/templates', (req: Request, res: Response) => {
     try {
         // Fetch templates from DB (or use fallback if empty for demo)
         const rows = db.prepare('SELECT * FROM templates').all();
@@ -114,7 +114,7 @@ app.get('/api/templates', (req, res) => {
 });
 
 
-app.get('/api/template/:id', (req, res) => {
+app.get('/api/template/:id', (req: Request, res: Response) => {
     const templateId = req.params.id;
     try {
         const row: any = db.prepare('SELECT * FROM templates WHERE id = ?').get(templateId);
@@ -161,7 +161,7 @@ app.get('/api/template/:id', (req, res) => {
 });
 
 
-app.post('/api/generate-pdf', authenticateToken, async (req: any, res) => {
+app.post('/api/generate-pdf', authenticateToken, async (req: any, res: Response) => {
     try {
         const {
             templateId,
@@ -266,7 +266,7 @@ app.post('/api/generate-pdf', authenticateToken, async (req: any, res) => {
     }
 });
 
-app.post('/api/save-template', authenticateToken, (req: any, res) => {
+app.post('/api/save-template', authenticateToken, (req: any, res: Response) => {
     const { templateData } = req.body || {};
     if (!templateData || typeof templateData !== 'object') {
         return res.status(400).json({ success: false, error: 'templateData is required' });
@@ -307,7 +307,7 @@ import { AnalyticsController } from './controllers/AnalyticsController';
 // Auth Routes
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-app.post('/api/auth/register', rateLimitAuth, async (req, res) => {
+app.post('/api/auth/register', rateLimitAuth, async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body || {};
         if (typeof email !== 'string' || !EMAIL_RE.test(email)) {
@@ -338,7 +338,7 @@ app.post('/api/auth/register', rateLimitAuth, async (req, res) => {
     }
 });
 
-app.post('/api/auth/login', rateLimitAuth, async (req, res) => {
+app.post('/api/auth/login', rateLimitAuth, async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body || {};
         if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
@@ -370,36 +370,36 @@ app.post('/api/analytics/track', authenticateToken, AnalyticsController.trackEve
 app.get('/api/analytics/dashboard', authenticateToken, AnalyticsController.getDashboard);
 
 // Mobile Deposit Route
-app.post('/api/deposits', authenticateToken, upload.fields([{ name: 'frontImage', maxCount: 1 }, { name: 'backImage', maxCount: 1 }]), (req, res) => depositController.submitDeposit(req, res));
+app.post('/api/deposits', authenticateToken, upload.fields([{ name: 'frontImage', maxCount: 1 }, { name: 'backImage', maxCount: 1 }]), (req: Request, res: Response) => depositController.submitDeposit(req, res));
 
 // Identity Verification Routes
-app.post('/api/verify/start', authenticateToken, (req, res) => depositController.startVerification(req, res));
+app.post('/api/verify/start', authenticateToken, (req: Request, res: Response) => depositController.startVerification(req, res));
 app.post('/api/verify/biometrics', authenticateToken, upload.fields([
     { name: 'idImage', maxCount: 1 },
     { name: 'selfieImage', maxCount: 1 }
-]), (req, res) => depositController.submitBiometrics(req, res));
+]), (req: Request, res: Response) => depositController.submitBiometrics(req, res));
 
 // ACH Direct Deposit Route (Phase 33)
-app.post('/api/payments/ach', authenticateToken, (req, res) => paymentController.submitDirectDeposit(req, res));
+app.post('/api/payments/ach', authenticateToken, (req: Request, res: Response) => paymentController.submitDirectDeposit(req, res));
 
 // Seed data
 TaxController.seedTemplates();
 
 // Admin Dashboard Routes (Phase 34)
-app.get('/api/admin/stats', authenticateToken, requireAdmin, (req, res) => adminController.getSystemStats(req, res));
-app.get('/api/admin/verifications', authenticateToken, requireAdmin, (req, res) => adminController.getVerifications(req, res));
-app.get('/api/admin/ach-batches', authenticateToken, requireAdmin, (req, res) => adminController.getACHBatches(req, res));
+app.get('/api/admin/stats', authenticateToken, requireAdmin, (req: Request, res: Response) => adminController.getSystemStats(req, res));
+app.get('/api/admin/verifications', authenticateToken, requireAdmin, (req: Request, res: Response) => adminController.getVerifications(req, res));
+app.get('/api/admin/ach-batches', authenticateToken, requireAdmin, (req: Request, res: Response) => adminController.getACHBatches(req, res));
 
 // Tax Routes
-app.get('/api/tax/templates', authenticateToken, (req, res) => taxController.getTemplates(req, res));
-app.get('/api/tax/documents/:userId', authenticateToken, (req, res) => taxController.getDocuments(req, res));
-app.post('/api/tax/documents', authenticateToken, (req, res) => taxController.saveDocument(req, res));
-app.put('/api/tax/documents/:id', authenticateToken, (req, res) => taxController.updateDocument(req, res));
+app.get('/api/tax/templates', authenticateToken, (req: Request, res: Response) => taxController.getTemplates(req, res));
+app.get('/api/tax/documents/:userId', authenticateToken, (req: Request, res: Response) => taxController.getDocuments(req, res));
+app.post('/api/tax/documents', authenticateToken, (req: Request, res: Response) => taxController.saveDocument(req, res));
+app.put('/api/tax/documents/:id', authenticateToken, (req: Request, res: Response) => taxController.updateDocument(req, res));
 
 // ==================== INVOICING & MERCHANT PAYMENT PROCESSING ENGINE ====================
 
 // 1. List Merchant Invoices
-app.get('/api/invoices', authenticateToken, (req: any, res) => {
+app.get('/api/invoices', authenticateToken, (req: any, res: Response) => {
     try {
         const rows = db.prepare('SELECT * FROM invoices ORDER BY created_at DESC').all();
         const invoices = rows.map((r: any) => ({
@@ -416,7 +416,7 @@ app.get('/api/invoices', authenticateToken, (req: any, res) => {
 });
 
 // 2. Create Invoice
-app.post('/api/invoices', authenticateToken, (req: any, res) => {
+app.post('/api/invoices', authenticateToken, (req: any, res: Response) => {
     try {
         const {
             clientName,
@@ -469,7 +469,7 @@ app.post('/api/invoices', authenticateToken, (req: any, res) => {
 });
 
 // 3. Get Invoice Details (Public / Payer portal)
-app.get('/api/invoices/:id', (req, res) => {
+app.get('/api/invoices/:id', (req: Request, res: Response) => {
     try {
         const row: any = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
         if (!row) return res.status(404).json({ success: false, error: 'Invoice not found' });
@@ -489,7 +489,7 @@ app.get('/api/invoices/:id', (req, res) => {
 });
 
 // 4. Pay Invoice (Multi-Rail: Card, Plaid, Manual ACH with Trial Deposits, SWIFT, Digital Tags)
-app.post('/api/invoices/:id/pay', (req, res) => {
+app.post('/api/invoices/:id/pay', (req: Request, res: Response) => {
     try {
         const invoiceId = req.params.id;
         const row: any = db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoiceId);

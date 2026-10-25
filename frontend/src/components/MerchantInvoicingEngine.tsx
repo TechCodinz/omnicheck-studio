@@ -29,7 +29,7 @@ interface Invoice {
     notes?: string;
 }
 
-export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ onClose }: { onClose?: () => void }) => {
     const [activeTab, setActiveTab] = useState<'BUILDER' | 'CHECKOUT' | 'SETTLEMENT' | 'LEDGER'>('BUILDER');
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -102,10 +102,11 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
     const loadInvoices = async () => {
         setIsLoading(true);
         try {
-            const res = await apiClient.listInvoices();
-            if (res.success && res.invoices && res.invoices.length > 0) {
-                setInvoices(res.invoices);
-                if (!selectedInvoice) setSelectedInvoice(res.invoices[0]);
+            const res: any = await apiClient.listInvoices();
+            const invList: Invoice[] = res.invoices || res.data?.invoices || [];
+            if (res.success && invList.length > 0) {
+                setInvoices(invList);
+                if (!selectedInvoice) setSelectedInvoice(invList[0]);
             } else {
                 // Initialize default sample invoice if empty
                 const initialInv: Invoice = {
@@ -132,7 +133,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
         }
     };
 
-    const calculateSubtotal = () => items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+    const calculateSubtotal = () => items.reduce((sum: number, item: InvoiceItem) => sum + (item.quantity * item.rate), 0);
 
     const handleCreateInvoice = async () => {
         setIsLoading(true);
@@ -149,21 +150,22 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                 notes
             };
 
-            const res = await apiClient.createInvoice(payload);
+            const res: any = await apiClient.createInvoice(payload);
             if (res.success) {
+                const invData = res.invoice || res.data?.invoice || {};
                 const newInv: Invoice = {
-                    id: res.invoice.id,
+                    id: invData.id || `INV-${Date.now().toString().slice(-6)}`,
                     client_name: clientName,
                     client_email: clientEmail,
-                    amount: res.invoice.amount,
-                    currency: res.invoice.currency,
+                    amount: invData.amount || calculateSubtotal(),
+                    currency: invData.currency || currency,
                     status: 'SENT',
                     items,
                     payout_destination: payoutDest,
                     created_at: new Date().toISOString(),
                     notes
                 };
-                setInvoices(prev => [newInv, ...prev]);
+                setInvoices((prev: Invoice[]) => [newInv, ...prev]);
                 setSelectedInvoice(newInv);
                 setActiveTab('CHECKOUT');
                 setStatusMessage({ type: 'success', text: `Invoice ${newInv.id} issued successfully. View payment simulator below.` });
@@ -298,9 +300,9 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
     };
 
     const updateLocalInvoiceStatus = (id: string, status: any, method: string) => {
-        setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, status, payment_method: method } : inv));
+        setInvoices((prev: Invoice[]) => prev.map((inv: Invoice) => inv.id === id ? { ...inv, status, payment_method: method } : inv));
         if (selectedInvoice && selectedInvoice.id === id) {
-            setSelectedInvoice(prev => prev ? { ...prev, status, payment_method: method } : null);
+            setSelectedInvoice((prev: Invoice | null) => prev ? { ...prev, status, payment_method: method } : null);
         }
     };
 
@@ -445,7 +447,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="text"
                                         value={clientName}
-                                        onChange={e => setClientName(e.target.value)}
+                                        onChange={(e: any) => setClientName(e.target.value)}
                                         style={{ width: '100%', padding: '10px 12px', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', color: '#FFF' }}
                                     />
                                 </div>
@@ -454,7 +456,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="email"
                                         value={clientEmail}
-                                        onChange={e => setClientEmail(e.target.value)}
+                                        onChange={(e: any) => setClientEmail(e.target.value)}
                                         style={{ width: '100%', padding: '10px 12px', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', color: '#FFF' }}
                                     />
                                 </div>
@@ -464,21 +466,21 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                             <div style={{ fontSize: '14px', fontWeight: 600, margin: '20px 0 10px', color: '#E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span>Itemized Goods & Services</span>
                                 <button
-                                    onClick={() => setItems(prev => [...prev, { id: String(Date.now()), description: 'Professional Services', quantity: 1, rate: 250 }])}
+                                    onClick={() => setItems((prev: InvoiceItem[]) => [...prev, { id: String(Date.now()), description: 'Professional Services', quantity: 1, rate: 250 }])}
                                     style={{ padding: '4px 10px', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3B82F6', borderRadius: '6px', color: '#60A5FA', fontSize: '11px', cursor: 'pointer' }}
                                 >
                                     + Add Item
                                 </button>
                             </div>
 
-                            {items.map((item, idx) => (
+                            {items.map((item: InvoiceItem, idx: number) => (
                                 <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 120px 120px 30px', gap: 10, alignItems: 'center', marginBottom: 10 }}>
                                     <input
                                         type="text"
                                         value={item.description}
-                                        onChange={e => {
+                                        onChange={(e: any) => {
                                             const val = e.target.value;
-                                            setItems(prev => prev.map(i => i.id === item.id ? { ...i, description: val } : i));
+                                            setItems((prev: InvoiceItem[]) => prev.map((i: InvoiceItem) => i.id === item.id ? { ...i, description: val } : i));
                                         }}
                                         style={{ padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF', fontSize: '12px' }}
                                     />
@@ -486,9 +488,9 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                         type="number"
                                         min="1"
                                         value={item.quantity}
-                                        onChange={e => {
+                                        onChange={(e: any) => {
                                             const qty = parseInt(e.target.value) || 1;
-                                            setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: qty } : i));
+                                            setItems((prev: InvoiceItem[]) => prev.map((i: InvoiceItem) => i.id === item.id ? { ...i, quantity: qty } : i));
                                         }}
                                         style={{ padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF', fontSize: '12px', textAlign: 'center' }}
                                     />
@@ -496,9 +498,9 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                         type="number"
                                         step="0.01"
                                         value={item.rate}
-                                        onChange={e => {
+                                        onChange={(e: any) => {
                                             const r = parseFloat(e.target.value) || 0;
-                                            setItems(prev => prev.map(i => i.id === item.id ? { ...i, rate: r } : i));
+                                            setItems((prev: InvoiceItem[]) => prev.map((i: InvoiceItem) => i.id === item.id ? { ...i, rate: r } : i));
                                         }}
                                         style={{ padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF', fontSize: '12px', textAlign: 'right' }}
                                     />
@@ -506,7 +508,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                         ${(item.quantity * item.rate).toFixed(2)}
                                     </div>
                                     <button
-                                        onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))}
+                                        onClick={() => setItems((prev: InvoiceItem[]) => prev.filter((i: InvoiceItem) => i.id !== item.id))}
                                         style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px' }}
                                     >
                                         ×
@@ -597,7 +599,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
 
                             {/* Summary Table */}
                             <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 12 }}>
-                                {items.map(item => (
+                                {items.map((item: InvoiceItem) => (
                                     <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: 8 }}>
                                         <span>{item.quantity}× {item.description}</span>
                                         <span style={{ fontWeight: 600 }}>${(item.quantity * item.rate).toFixed(2)}</span>
@@ -669,7 +671,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                                 <input
                                                     type="text"
                                                     value={cardData.number}
-                                                    onChange={e => setCardData(prev => ({ ...prev, number: e.target.value }))}
+                                                    onChange={(e: any) => setCardData((prev: any) => ({ ...prev, number: e.target.value }))}
                                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                                 />
                                             </div>
@@ -678,7 +680,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                                 <input
                                                     type="text"
                                                     value={cardData.exp}
-                                                    onChange={e => setCardData(prev => ({ ...prev, exp: e.target.value }))}
+                                                    onChange={(e: any) => setCardData((prev: any) => ({ ...prev, exp: e.target.value }))}
                                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                                 />
                                             </div>
@@ -687,7 +689,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                                 <input
                                                     type="text"
                                                     value={cardData.cvc}
-                                                    onChange={e => setCardData(prev => ({ ...prev, cvc: e.target.value }))}
+                                                    onChange={(e: any) => setCardData((prev: any) => ({ ...prev, cvc: e.target.value }))}
                                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                                 />
                                             </div>
@@ -736,7 +738,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                                 <input
                                                     type="text"
                                                     value={manualAchData.routingNumber}
-                                                    onChange={e => setManualAchData(prev => ({ ...prev, routingNumber: e.target.value }))}
+                                                    onChange={(e: any) => setManualAchData((prev: any) => ({ ...prev, routingNumber: e.target.value }))}
                                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                                 />
                                             </div>
@@ -745,7 +747,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                                 <input
                                                     type="text"
                                                     value={manualAchData.accountNumber}
-                                                    onChange={e => setManualAchData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                                                    onChange={(e: any) => setManualAchData((prev: any) => ({ ...prev, accountNumber: e.target.value }))}
                                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                                 />
                                             </div>
@@ -779,7 +781,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                                 <input
                                                     type="text"
                                                     value={swiftData.bic}
-                                                    onChange={e => setSwiftData(prev => ({ ...prev, bic: e.target.value.toUpperCase() }))}
+                                                    onChange={(e: any) => setSwiftData((prev: any) => ({ ...prev, bic: e.target.value.toUpperCase() }))}
                                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                                 />
                                             </div>
@@ -788,7 +790,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                                 <input
                                                     type="text"
                                                     value={swiftData.iban}
-                                                    onChange={e => setSwiftData(prev => ({ ...prev, iban: e.target.value }))}
+                                                    onChange={(e: any) => setSwiftData((prev: any) => ({ ...prev, iban: e.target.value }))}
                                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                                 />
                                             </div>
@@ -811,7 +813,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                             {['ZELLE', 'PAYPAL', 'CASHAPP', 'VENMO'].map(p => (
                                                 <button
                                                     key={p}
-                                                    onClick={() => setTagData(prev => ({ ...prev, platform: p }))}
+                                                    onClick={() => setTagData((prev: any) => ({ ...prev, platform: p }))}
                                                     style={{
                                                         flex: 1,
                                                         padding: '10px',
@@ -881,7 +883,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="text"
                                         value={receiverBank.bankName}
-                                        onChange={e => setReceiverBank(prev => ({ ...prev, bankName: e.target.value }))}
+                                        onChange={(e: any) => setReceiverBank((prev: any) => ({ ...prev, bankName: e.target.value }))}
                                         style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF' }}
                                     />
                                 </div>
@@ -890,7 +892,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="text"
                                         value={receiverBank.routingNumber}
-                                        onChange={e => setReceiverBank(prev => ({ ...prev, routingNumber: e.target.value }))}
+                                        onChange={(e: any) => setReceiverBank((prev: any) => ({ ...prev, routingNumber: e.target.value }))}
                                         style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF' }}
                                     />
                                 </div>
@@ -906,7 +908,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="text"
                                         value={receiverSwift.bic}
-                                        onChange={e => setReceiverSwift(prev => ({ ...prev, bic: e.target.value }))}
+                                        onChange={(e: any) => setReceiverSwift((prev: any) => ({ ...prev, bic: e.target.value }))}
                                         style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF' }}
                                     />
                                 </div>
@@ -915,7 +917,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="text"
                                         value={receiverSwift.iban}
-                                        onChange={e => setReceiverSwift(prev => ({ ...prev, iban: e.target.value }))}
+                                        onChange={(e: any) => setReceiverSwift((prev: any) => ({ ...prev, iban: e.target.value }))}
                                         style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF' }}
                                     />
                                 </div>
@@ -931,7 +933,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="text"
                                         value={receiverTags.zelle}
-                                        onChange={e => setReceiverTags(prev => ({ ...prev, zelle: e.target.value }))}
+                                        onChange={(e: any) => setReceiverTags((prev: any) => ({ ...prev, zelle: e.target.value }))}
                                         style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF' }}
                                     />
                                 </div>
@@ -940,7 +942,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     <input
                                         type="text"
                                         value={receiverTags.paypal}
-                                        onChange={e => setReceiverTags(prev => ({ ...prev, paypal: e.target.value }))}
+                                        onChange={(e: any) => setReceiverTags((prev: any) => ({ ...prev, paypal: e.target.value }))}
                                         style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#FFF' }}
                                     />
                                 </div>
@@ -962,10 +964,10 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                         {/* KPI Cards */}
                         <div className="oc-gcards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
                             {[
-                                { label: 'Total Invoiced Volume', val: `$${invoices.reduce((s, i) => s + i.amount, 0).toFixed(2)}`, color: '#38BDF8' },
-                                { label: 'Settled Receipts', val: `$${invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + i.amount, 0).toFixed(2)}`, color: '#34D399' },
-                                { label: 'Pending Payment', val: invoices.filter(i => i.status !== 'PAID').length, color: '#FBBF24' },
-                                { label: 'Active Trial Deposits', val: invoices.filter(i => i.status === 'TRIAL_PENDING').length, color: '#A855F7' }
+                                { label: 'Total Invoiced Volume', val: `$${invoices.reduce((s: number, i: Invoice) => s + i.amount, 0).toFixed(2)}`, color: '#38BDF8' },
+                                { label: 'Settled Receipts', val: `$${invoices.filter((i: Invoice) => i.status === 'PAID').reduce((s: number, i: Invoice) => s + i.amount, 0).toFixed(2)}`, color: '#34D399' },
+                                { label: 'Pending Payment', val: invoices.filter((i: Invoice) => i.status !== 'PAID').length, color: '#FBBF24' },
+                                { label: 'Active Trial Deposits', val: invoices.filter((i: Invoice) => i.status === 'TRIAL_PENDING').length, color: '#A855F7' }
                             ].map((kpi, idx) => (
                                 <div key={idx} style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '18px' }}>
                                     <div style={{ fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>{kpi.label}</div>
@@ -988,7 +990,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {invoices.map(inv => (
+                                    {invoices.map((inv: Invoice) => (
                                         <tr key={inv.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
                                             <td style={{ padding: '14px 18px', fontWeight: 700, color: '#38BDF8' }}>{inv.id}</td>
                                             <td style={{ padding: '14px 18px' }}>{inv.client_name}</td>
@@ -1064,7 +1066,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     step="0.01"
                                     placeholder="0.14"
                                     value={trialDep1}
-                                    onChange={e => setTrialDep1(e.target.value)}
+                                    onChange={(e: any) => setTrialDep1(e.target.value)}
                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                 />
                             </div>
@@ -1075,7 +1077,7 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                                     step="0.01"
                                     placeholder="0.32"
                                     value={trialDep2}
-                                    onChange={e => setTrialDep2(e.target.value)}
+                                    onChange={(e: any) => setTrialDep2(e.target.value)}
                                     style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: '#FFF' }}
                                 />
                             </div>
