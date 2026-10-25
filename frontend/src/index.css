@@ -630,3 +630,47 @@ body {
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover { background: rgba(249, 115, 22, 0.55); background-clip: content-box; }
+
+/* Retractable studio panel rail (CheckBuilder) */
+.oc-panel-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  height: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.oc-rail-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, #F97316, #EA580C);
+  color: #fff;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+  flex: none;
+}
+.oc-rail-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94A3B8;
+  text-transform: uppercase;
+  font-family: 'Space Grotesk', sans-serif;
+  white-space: nowrap;
+}
+@media (max-width: 920px) {
+  .oc-builder-panel.oc-panel-retracted { max-height: 56px; }
+  .oc-panel-rail { flex-direction: row; justify-content: center; padding: 10px 0; height: auto; }
+  .oc-rail-label { writing-mode: horizontal-tb; transform: none; }
+}

@@ -960,6 +960,8 @@ const CheckBuilder: React.FC = () => {
     // (on phones it covered Page 2 while scrolling). Starts open on wide
     // screens, closed on phones.
     const [aiBarOpen, setAiBarOpen] = useState(() => window.innerWidth > 920);
+    const [panelRetracted, setPanelRetracted] = useState<boolean>(() => { try { return localStorage.getItem('oc-panel-retracted') === '1'; } catch (err) { return false; } });
+    const togglePanel = (retract: boolean) => { setPanelRetracted(retract); try { localStorage.setItem('oc-panel-retracted', retract ? '1' : '0'); } catch (err) { /* storage unavailable */ } };
     const [isDraggingAiBar, setIsDraggingAiBar] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
@@ -3960,13 +3962,20 @@ const CheckBuilder: React.FC = () => {
     return (
         <div className="oc-builder-root" style={containerStyle}>
             {/* LEFT SIDEBAR */}
-            <div className="oc-builder-panel" style={sidebarStyle}>
+            <div className={`oc-builder-panel${panelRetracted ? ' oc-panel-retracted' : ''}`} style={panelRetracted ? { ...sidebarStyle, width: '48px', minWidth: '48px', overflow: 'hidden', transition: 'width 0.28s ease, min-width 0.28s ease' } : { ...sidebarStyle, transition: 'width 0.28s ease, min-width 0.28s ease' }}>
+                {panelRetracted ? (
+                    <div className="oc-panel-rail" onClick={() => togglePanel(false)} title="Open design panel">
+                        <button className="oc-rail-btn" onClick={() => togglePanel(false)} aria-label="Open design panel">&#8250;</button>
+                        <span className="oc-rail-label">Design Studio</span>
+                    </div>
+                ) : (<>
                 <div style={headerStyle}>
                     <span style={{ fontSize: 20 }}>🏦</span>
                     <div>
                         <div style={{ fontWeight: '700', fontSize: 15, letterSpacing: '-0.3px', fontFamily: "'Space Grotesk', sans-serif" }}>OmniCheck Pro</div>
                         <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px', fontWeight: '500' }}>Design Studio</div>
                     </div>
+                    <button onClick={() => togglePanel(true)} title="Retract panel - give the check editor full width" aria-label="Retract design panel" style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: 9, border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.14)', color: '#FFFFFF', fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>&#8249;</button>
                 </div>
 
                 <div style={{ textAlign: 'right', marginBottom: 8, paddingRight: 6 }}>
@@ -4762,6 +4771,7 @@ const CheckBuilder: React.FC = () => {
                         GENERATE FINAL CHECK
                     </button>
                 </div>
+                </>)}
             </div> {/* END LEFT SIDEBAR */}
 
             {/* RIGHT SIDE - PREVIEW */}
