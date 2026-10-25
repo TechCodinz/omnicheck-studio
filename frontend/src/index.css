@@ -669,6 +669,10 @@ body {
   font-family: 'Space Grotesk', sans-serif;
   white-space: nowrap;
 }
+/* Ask AI dot: float above the mobile bottom nav instead of covering content */
+@media (max-width: 920px) {
+  .oc-aibar-dot { bottom: 96px !important; right: 14px !important; }
+}
 @media (max-width: 920px) {
   .oc-builder-panel.oc-panel-retracted { max-height: 56px; }
   .oc-panel-rail { flex-direction: row; justify-content: center; padding: 10px 0; height: auto; }

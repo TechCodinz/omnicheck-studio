@@ -353,8 +353,9 @@ const canvasWrapperStyle: React.CSSProperties = {
     padding: '20px 0',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     overflowY: 'auto',
+    overflowX: 'auto',
     gap: '30px',
     background: '#1a1d23',
     justifyContent: 'flex-start'
@@ -959,7 +960,7 @@ const CheckBuilder: React.FC = () => {
     // The bar is click-to-open: it must never sit over the check design
     // (on phones it covered Page 2 while scrolling). Starts open on wide
     // screens, closed on phones.
-    const [aiBarOpen, setAiBarOpen] = useState(() => window.innerWidth > 920);
+    const [aiBarOpen, setAiBarOpen] = useState(false);
     const [panelRetracted, setPanelRetracted] = useState<boolean>(() => { try { return localStorage.getItem('oc-panel-retracted') === '1'; } catch (err) { return false; } });
     const togglePanel = (retract: boolean) => { setPanelRetracted(retract); try { localStorage.setItem('oc-panel-retracted', retract ? '1' : '0'); } catch (err) { /* storage unavailable */ } };
     const [isDraggingAiBar, setIsDraggingAiBar] = useState(false);
@@ -4921,7 +4922,7 @@ const CheckBuilder: React.FC = () => {
                         gap: '10px',
                         transition: 'transform 0.2s ease-out',
                         padding: '0',
-                        margin: '0'
+                        margin: '0 auto'
                     }}>
                         {/* FRONT SIDE WITH RULER */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0px' }}>
@@ -5210,18 +5211,20 @@ const CheckBuilder: React.FC = () => {
                     design stays fully visible while scrolling; tap to open. */}
                 {!aiBarOpen && (
                     <button
-                        className="oc-aibar"
+                        className="oc-aibar-dot"
                         onClick={() => setAiBarOpen(true)}
+                        title="Ask AI to design"
+                        aria-label="Ask AI to design"
                         style={{
-                            position: 'fixed', right: '16px', bottom: '20px', zIndex: 1000,
-                            display: 'flex', alignItems: 'center', gap: '8px',
+                            position: 'fixed', right: '18px', bottom: '20px', zIndex: 1000,
+                            width: '54px', height: '54px', borderRadius: '50%', padding: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: 'linear-gradient(135deg, #7b1fa2, #4a148c)', color: 'white',
-                            border: 'none', borderRadius: '999px', padding: '12px 18px',
-                            fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                            boxShadow: '0 10px 30px rgba(74, 20, 140, 0.45)'
+                            border: '1px solid rgba(255,255,255,0.25)', fontSize: '22px', cursor: 'pointer',
+                            boxShadow: '0 10px 30px rgba(74, 20, 140, 0.5)'
                         }}
                     >
-                        ✨ Ask AI
+                        ✨
                     </button>
                 )}
             </div>
