@@ -54,19 +54,22 @@ export class CheckBackEngine {
 
     private static addHorizontalWatermark(width: number, height: number, scale: number, objects: fabric.Object[]): void {
         const endorsementX = width - (1.5 * 72 * scale);
+        // The open area between the security box (ends at 233*scale, see
+        // addUnlockedSecurityBox) and the endorsement strip. The watermark
+        // is centred and sized on THIS area so it never runs under the box
+        // or into the strip.
+        const openL = 233 * scale;
+        const openW = endorsementX - openL;
         const commonProps = {
-            // Centred over the blue panel (not the full page) and sized to
-            // fit inside it - at 110px DOCUMENT ran into the endorsement
-            // strip and off the right edge.
-            left: endorsementX / 2,
-            fontSize: Math.min(110 * scale, (endorsementX * 0.86) / 7.6),
+            left: openL + (openW / 2),
+            fontSize: Math.min(96 * scale, ((openW - (24 * scale)) / 7.74)),
             fontFamily: 'Arial Black, Arial',
             fontWeight: 900,
             fill: 'rgba(180, 180, 180, 0.18)',
             originX: 'center',
             originY: 'center',
             selectable: true, evented: true, hasControls: true,
-            charSpacing: 22 * scale
+            charSpacing: 16 * scale
         };
 
         objects.push(new fabric.Text("ORIGINAL", {
@@ -171,6 +174,7 @@ export class CheckBackEngine {
                 fill: '#222',
                 angle: 90,
                 originX: 'center',
+                originY: 'center',
                 selectable: true, evented: true, hasControls: true
             } as any));
         }
@@ -186,6 +190,7 @@ export class CheckBackEngine {
             fill: '#444',
             angle: 90,
             originX: 'center',
+                originY: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
 
@@ -199,6 +204,7 @@ export class CheckBackEngine {
             fill: '#888',
             angle: 90,
             originX: 'center',
+                originY: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
     }
