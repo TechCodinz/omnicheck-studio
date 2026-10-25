@@ -16,6 +16,11 @@ import BlockchainVerificationPanel from './components/BlockchainVerificationPane
 import DeliveryModal, { CheckDeliveryOptions } from './components/DeliveryModal';
 import PricingPage from './components/PricingPage';
 import { LicenseProvider, useLicense } from './contexts/LicenseContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthModal from './components/AuthModal';
+import MobileDepositCapture from './components/MobileDepositCapture';
+import MerchantInvoicingEngine from './components/MerchantInvoicingEngine';
+
 
 // ============== TYPES ==============
 
@@ -35,6 +40,7 @@ interface DeliveryMethod {
 const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ collapsed, onToggle }) => {
     const location = useLocation();
     const { currentPlan, isPaid, checksRemaining, license } = useLicense();
+    const { isAdmin } = useAuth();
 
     const navItems = [
         { path: '/', icon: '💵', label: 'Check Generator', badge: null },
@@ -42,11 +48,12 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
         { path: '/document-editor', icon: '✏️', label: 'Document Editor', badge: null },
         { path: '/tax-documents', icon: '📋', label: 'Tax Documents', badge: 'NEW' },
         { path: '/mobile-deposit', icon: '📱', label: 'Mobile Deposit', badge: null },
+        { path: '/invoicing', icon: '🧾', label: 'Merchant Invoicing', badge: 'PAY' },
         { path: '/pricing', icon: '💎', label: 'Pricing & Plans', badge: !isPaid ? 'FREE' : null },
         { path: '/payments', icon: '💳', label: 'Crypto Payments', badge: null },
         { path: '/blockchain', icon: '⛓️', label: 'Blockchain Verify', badge: null },
         { path: '/analytics', icon: '📊', label: 'Analytics', badge: null },
-        { path: '/admin', icon: '⚙️', label: 'Admin Portal', badge: null },
+        { path: '/admin', icon: '⚙️', label: 'Admin Portal', badge: isAdmin ? 'ADMIN' : null },
     ];
 
     return (
@@ -193,148 +200,15 @@ const Sidebar: React.FC<{ collapsed: boolean; onToggle: () => void }> = ({ colla
 
 // End of Delivery Section
 
-// ============== MOBILE DEPOSIT PAGE ==============
 
-const MobileDepositPage: React.FC = () => {
-    const [uploadedCheck, setUploadedCheck] = useState<string | null>(null);
-    const [depositStatus, setDepositStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
-    const [bankInfo, setBankInfo] = useState({ bankName: '', routingNumber: '', accountNumber: '' });
-
-    const handleCheckUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) => setUploadedCheck(ev.target?.result as string);
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const processDeposit = () => {
-        setDepositStatus('processing');
-        setTimeout(() => {
-            setDepositStatus('success');
-        }, 3000);
-    };
-
-    return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <h1 style={{ color: '#fff', fontSize: '24px', marginBottom: '8px' }}>📱 Mobile Check Deposit</h1>
-                <p style={{ color: '#9CA3AF', marginBottom: '24px' }}>Deposit checks instantly from your device</p>
-
-                {/* Bank Selection */}
-                <div style={{ background: '#1F2937', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-                    <h3 style={{ color: '#fff', fontSize: '16px', marginBottom: '16px' }}>🏦 Select Deposit Account</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                        <div>
-                            <label style={{ display: 'block', color: '#9CA3AF', fontSize: '12px', marginBottom: '6px' }}>Bank Name</label>
-                            <input type="text" value={bankInfo.bankName} onChange={e => setBankInfo({ ...bankInfo, bankName: e.target.value })}
-                                placeholder="Chase, Bank of America..."
-                                style={{ width: '100%', padding: '12px', background: '#374151', border: '1px solid #4B5563', borderRadius: '8px', color: '#fff' }} />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', color: '#9CA3AF', fontSize: '12px', marginBottom: '6px' }}>Routing Number</label>
-                            <input type="text" value={bankInfo.routingNumber} onChange={e => setBankInfo({ ...bankInfo, routingNumber: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#374151', border: '1px solid #4B5563', borderRadius: '8px', color: '#fff' }} />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', color: '#9CA3AF', fontSize: '12px', marginBottom: '6px' }}>Account Number</label>
-                            <input type="text" value={bankInfo.accountNumber} onChange={e => setBankInfo({ ...bankInfo, accountNumber: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#374151', border: '1px solid #4B5563', borderRadius: '8px', color: '#fff' }} />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Check Upload */}
-                <div style={{ background: '#1F2937', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-                    <h3 style={{ color: '#fff', fontSize: '16px', marginBottom: '16px' }}>📸 Capture Check Images</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        {/* Front */}
-                        <div>
-                            <label style={{ display: 'block', color: '#9CA3AF', fontSize: '12px', marginBottom: '8px' }}>Check Front</label>
-                            <div style={{
-                                background: uploadedCheck ? `url(${uploadedCheck}) center/cover` : '#374151',
-                                height: '180px',
-                                borderRadius: '8px',
-                                border: '2px dashed #4B5563',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                position: 'relative'
-                            }}>
-                                <input type="file" accept="image/*" capture="environment" onChange={handleCheckUpload}
-                                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-                                {!uploadedCheck && (
-                                    <div style={{ textAlign: 'center', color: '#9CA3AF' }}>
-                                        <div style={{ fontSize: '40px', marginBottom: '8px' }}>📷</div>
-                                        <div style={{ fontSize: '13px' }}>Tap to capture front</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        {/* Back */}
-                        <div>
-                            <label style={{ display: 'block', color: '#9CA3AF', fontSize: '12px', marginBottom: '8px' }}>Check Back (Endorsed)</label>
-                            <div style={{
-                                background: '#374151',
-                                height: '180px',
-                                borderRadius: '8px',
-                                border: '2px dashed #4B5563',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}>
-                                <div style={{ textAlign: 'center', color: '#9CA3AF' }}>
-                                    <div style={{ fontSize: '40px', marginBottom: '8px' }}>📷</div>
-                                    <div style={{ fontSize: '13px' }}>Tap to capture back</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Deposit Button */}
-                {depositStatus === 'idle' && uploadedCheck && (
-                    <button onClick={processDeposit} style={{
-                        width: '100%', padding: '16px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                        border: 'none', borderRadius: '12px', color: '#fff', fontSize: '16px', fontWeight: '600', cursor: 'pointer'
-                    }}>
-                        💰 Deposit Check Now
-                    </button>
-                )}
-
-                {depositStatus === 'processing' && (
-                    <div style={{ background: '#1F2937', borderRadius: '12px', padding: '40px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'spin 1s linear infinite' }}>⏳</div>
-                        <div style={{ color: '#fff', fontSize: '18px', fontWeight: '600' }}>Processing Deposit...</div>
-                        <div style={{ color: '#9CA3AF', fontSize: '13px', marginTop: '8px' }}>Verifying check details and routing</div>
-                    </div>
-                )}
-
-                {depositStatus === 'success' && (
-                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', padding: '40px', textAlign: 'center', border: '1px solid #10B981' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
-                        <div style={{ color: '#10B981', fontSize: '18px', fontWeight: '600' }}>Deposit Successful!</div>
-                        <div style={{ color: '#9CA3AF', fontSize: '13px', marginTop: '8px' }}>Funds will be available in 1-2 business days</div>
-                        <div style={{ marginTop: '16px', color: '#fff', fontSize: '14px' }}>
-                            Confirmation #: <strong>DEP-{Date.now().toString(36).toUpperCase()}</strong>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
 
 // ============== MAIN APP ==============
 
 // Wrapper to detect route and conditionally render layout
 const AppContent: React.FC = () => {
-    const location = useLocation();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+    const { user, isAuthenticated, isAdmin, logout, openAuthModal } = useAuth();
 
     const handleDelivery = useCallback((method: string, options: CheckDeliveryOptions) => {
         console.log('Delivering via:', method, options);
@@ -342,9 +216,8 @@ const AppContent: React.FC = () => {
         alert(`✅ Check sent via ${method}!`);
     }, []);
 
-    // Unified layout for all routes including CheckBuilder
+    const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : 'U';
 
-    // For all other routes, show the standard layout with sidebar
     return (
         <div style={{
             minHeight: '100vh',
@@ -356,10 +229,11 @@ const AppContent: React.FC = () => {
             <div style={{ marginLeft: sidebarCollapsed ? '60px' : '220px', transition: 'margin-left 0.3s ease' }}>
                 {/* Top Bar */}
                 <header style={{
-                    background: 'rgba(31, 41, 55, 0.8)',
-                    backdropFilter: 'blur(10px)',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                    padding: '12px 24px',
+                    background: 'rgba(13, 17, 23, 0.82)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    padding: '12px 28px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -368,26 +242,159 @@ const AppContent: React.FC = () => {
                     zIndex: 50
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <input type="text" placeholder="🔍 Search documents, checks, templates..."
-                            style={{
-                                width: '300px', padding: '10px 16px', background: '#374151', border: '1px solid #4B5563',
-                                borderRadius: '8px', color: '#fff', fontSize: '13px'
-                            }} />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="text"
+                                placeholder="🔍 Search checks, templates, payees..."
+                                style={{
+                                    width: '320px',
+                                    padding: '10px 42px 10px 16px',
+                                    background: '#151b24',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '10px',
+                                    color: '#fff',
+                                    fontSize: '13px',
+                                    outline: 'none',
+                                    transition: 'border-color 0.2s'
+                                }}
+                            />
+                            <span style={{
+                                position: 'absolute',
+                                right: '10px',
+                                top: '8px',
+                                fontSize: '10px',
+                                color: '#6B7280',
+                                background: 'rgba(255, 255, 255, 0.06)',
+                                padding: '3px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                            }}>
+                                ⌘K
+                            </span>
+                        </div>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: '#34D399',
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                            padding: '4px 10px',
+                            borderRadius: '16px'
+                        }}>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
+                            API Online • 14ms
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <button onClick={() => setDeliveryModalOpen(true)} style={{
-                            padding: '10px 16px', background: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
-                            border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
-                            display: 'flex', alignItems: 'center', gap: '8px'
+                            padding: '9px 18px',
+                            background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+                            border: 'none',
+                            borderRadius: '9px',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 4px 14px rgba(249, 115, 22, 0.35)',
+                            transition: 'all 0.2s ease'
                         }}>
                             📤 Send Check
                         </button>
-                        <button style={{ width: '40px', height: '40px', background: '#374151', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '16px' }}>
-                            🔔
-                        </button>
-                        <div style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '14px' }}>
-                            JD
+
+                        <div style={{ position: 'relative' }}>
+                            <button style={{
+                                width: '38px',
+                                height: '38px',
+                                background: '#151b24',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRadius: '9px',
+                                color: '#9CA3AF',
+                                cursor: 'pointer',
+                                fontSize: '15px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                🔔
+                            </button>
+                            <span style={{
+                                position: 'absolute',
+                                top: '-2px',
+                                right: '-2px',
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                background: '#F97316'
+                            }} />
                         </div>
+
+                        {isAuthenticated && user ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1F2937', padding: '4px 12px 4px 6px', borderRadius: '24px', border: '1px solid #374151' }}>
+                                <div style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    background: isAdmin ? 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)' : 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#fff',
+                                    fontWeight: '700',
+                                    fontSize: '13px'
+                                }}>
+                                    {userInitial}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                                    <span style={{ color: '#F3F4F6', fontSize: '12px', fontWeight: 600, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {user.email}
+                                    </span>
+                                    <span style={{ color: isAdmin ? '#A78BFA' : '#9CA3AF', fontSize: '10px', fontWeight: 600 }}>
+                                        {isAdmin ? 'ADMINISTRATOR' : 'USER'}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={logout}
+                                    title="Sign Out"
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#9CA3AF',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        padding: '4px 8px',
+                                        marginLeft: '4px',
+                                        borderRadius: '4px'
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => openAuthModal('login')}
+                                style={{
+                                    padding: '9px 16px',
+                                    background: '#374151',
+                                    border: '1px solid #4B5563',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                🔑 Sign In
+                            </button>
+                        )}
                     </div>
                 </header>
 
@@ -398,7 +405,8 @@ const AppContent: React.FC = () => {
                         <Route path="/documents" element={<DocumentTemplateGallery />} />
                         <Route path="/document-editor" element={<GlobalDocumentEditor />} />
                         <Route path="/tax-documents" element={<TaxDocumentEditor />} />
-                        <Route path="/mobile-deposit" element={<MobileDepositPage />} />
+                        <Route path="/mobile-deposit" element={<MobileDepositCapture />} />
+                        <Route path="/invoicing" element={<MerchantInvoicingEngine />} />
                         <Route path="/pricing" element={<PricingPage />} />
                         <Route path="/payments" element={<CryptoPaymentPanel amountUSD={100} orderId="demo-order" />} />
                         <Route path="/blockchain" element={<BlockchainVerificationPanel checkId="demo-check-123" checkData={{ checkNumber: '0001', payeeName: 'Demo User', amount: 1000, date: new Date().toISOString() }} />} />
@@ -408,12 +416,13 @@ const AppContent: React.FC = () => {
                 </main>
             </div>
 
-            {/* Delivery Modal */}
+            {/* Modals */}
             <DeliveryModal
                 isOpen={deliveryModalOpen}
                 onClose={() => setDeliveryModalOpen(false)}
                 onDeliver={handleDelivery}
             />
+            <AuthModal />
         </div>
     );
 };
@@ -421,9 +430,11 @@ const AppContent: React.FC = () => {
 function App() {
     return (
         <Router>
-            <LicenseProvider>
-                <AppContent />
-            </LicenseProvider>
+            <AuthProvider>
+                <LicenseProvider>
+                    <AppContent />
+                </LicenseProvider>
+            </AuthProvider>
 
             <style>{`
                 @keyframes spin {

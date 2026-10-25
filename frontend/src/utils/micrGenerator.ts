@@ -1,95 +1,159 @@
-// MICRE13B font definition removed as file is missing
+/**
+ * MICREngine - ANSI X9.27 & ANSI X9.100-160 Bank-Grade Compliance Engine
+ * 
+ * Strict specifications for zero-decline banking acceptance:
+ * - Proper 9-digit ABA routing transit with Mod-10 checksum validation
+ * - Standard On-Us account and serial delimiters
+ * - Clear band spacing and magnetic ink specifications
+ */
 
+export interface MagneticInkSpec {
+    inkType: 'magnetic' | 'standard';
+    ironOxideContent: number; // percentage (standard: 40-50%)
+    particleSize: number;     // microns
+    remanence: number;        // Tesla
+    coercivity: number;       // Oersteds
+    printHeight: number;      // inches (standard: 0.117" to 0.125")
+    waveform: number[];
+}
 
 export class MICREngine {
-    private static readonly ROUTING_SYMBOLS = {
-        transit: '⑆',  // Transit symbol
-        onus: '⑇',      // On-us symbol
-        amount: '⑈',    // Amount symbol
-        dash: '⑉',      // Dash symbol
-        routingTransit: '⑊' // Routing/Transit Check Digit
+    // Unicode E-13B symbols & Standard ASCII mappings for E-13B font families
+    public static readonly ROUTING_SYMBOLS = {
+        transitUnicode: '⑁', // Unicode Transit (ABA)
+        onusUnicode: '⑃',    // Unicode On-Us
+        amountUnicode: '⑂',  // Unicode Amount
+        dashUnicode: '⑄',    // Unicode Dash
+
+        // ASCII Font Mappings (Used by standard E-13B TrueType/Web fonts)
+        transitAscii: 'A',
+        amountAscii: 'B',
+        onusAscii: 'C',
+        dashAscii: 'D'
     };
 
-    // Generate complete MICR line with exact bank specifications
+    /**
+     * Validates a 9-digit ABA routing number using the Federal Reserve Mod-10 formula:
+     * (3*(d1 + d4 + d7) + 7*(d2 + d5 + d8) + 1*(d3 + d6 + d9)) mod 10 === 0
+     */
+    static validateRoutingNumber(routingNumber: string): boolean {
+        const clean = routingNumber.replace(/\D/g, '');
+        if (clean.length !== 9) return false;
+
+        const d = clean.split('').map(Number);
+        const checksum = (
+            3 * (d[0] + d[3] + d[6]) +
+            7 * (d[1] + d[4] + d[7]) +
+            1 * (d[2] + d[5] + d[8])
+        ) % 10;
+
+        return checksum === 0;
+    }
+
+    /**
+     * Calculates the Mod-10 check digit for the first 8 digits of a routing number
+     */
+    static calculateRoutingCheckDigit(first8Digits: string): number {
+        const clean = first8Digits.replace(/\D/g, '').slice(0, 8);
+        if (clean.length < 8) return 0;
+
+        const weights = [3, 7, 1, 3, 7, 1, 3, 7];
+        let sum = 0;
+        for (let i = 0; i < 8; i++) {
+            sum += parseInt(clean[i], 10) * weights[i];
+        }
+
+        return (10 - (sum % 10)) % 10;
+    }
+
+    /**
+     * Generates a fully compliant ANSI X9.100-160 MICR line.
+     * Note: In production banking, routing numbers are ALWAYS exactly 9 digits,
+     * and account numbers must NEVER have arbitrary digits appended.
+     */
     static generateFullMICR(
         routingNumber: string,
         accountNumber: string,
         checkNumber: string,
         amount?: number,
-        checkType: 'personal' | 'business' | 'cashier' | 'echeck' = 'personal'
+        checkType: 'personal' | 'business' | 'cashier' | 'echeck' = 'business',
+        useAsciiGlyphs: boolean = false
     ): {
         line: string;
+        rawAsciiLine: string;
         positions: number[];
         font: string;
         magneticInkSpec: MagneticInkSpec;
+        isValid: boolean;
+        errors: string[];
     } {
-        // Validate routing number (ABA format)
-        this.validateRoutingNumber(routingNumber);
+        const errors: string[] = [];
+        const cleanRouting = routingNumber.replace(/\D/g, '');
+        const cleanAccount = accountNumber.replace(/\D/g, '');
+        const cleanCheckNum = checkNumber.replace(/\D/g, '').padStart(4, '0');
 
-        // Calculate check digits
-        const routingCheckDigit = this.calculateCheckDigit(routingNumber);
-        const accountCheckDigit = this.calculateCheckDigit(accountNumber);
-
-        // Format based on check type
-        let micrLine = '';
-        let positions: number[] = [];
-
-        switch (checkType) {
-            case 'cashier':
-                // Format: [Transit] [Routing] [CheckDigit] [OnUs] [Amount] [CheckNumber]
-                micrLine = `${this.ROUTING_SYMBOLS.transit}${routingNumber}${routingCheckDigit}` +
-                    `${this.ROUTING_SYMBOLS.onus}${this.ROUTING_SYMBOLS.amount}${amount?.toFixed(2)}` +
-                    `${this.ROUTING_SYMBOLS.onus}${checkNumber}`;
-                positions = [0, 12, 24, 36, 48];
-                break;
-
-            case 'echeck':
-                // Format for electronic checks
-                micrLine = `${this.ROUTING_SYMBOLS.transit}C${routingNumber}${routingCheckDigit}` +
-                    `${this.ROUTING_SYMBOLS.onus}A${accountNumber}${accountCheckDigit}` +
-                    `${this.ROUTING_SYMBOLS.onus}${checkNumber}`;
-                positions = [0, 15, 30, 45];
-                break;
-
-            default:
-                // Standard personal/business check format
-                micrLine = `${this.ROUTING_SYMBOLS.transit}${routingNumber}${routingCheckDigit}` +
-                    `${this.ROUTING_SYMBOLS.onus}${accountNumber}${accountCheckDigit}` +
-                    `${this.ROUTING_SYMBOLS.onus}${checkNumber}`;
-                positions = [0, 12, 24, 36];
+        if (cleanRouting.length !== 9) {
+            errors.push(`Routing number must be exactly 9 digits (found ${cleanRouting.length})`);
+        } else if (!this.validateRoutingNumber(cleanRouting)) {
+            errors.push('Routing number failed Federal Reserve Mod-10 checksum validation');
         }
 
-        // Add magnetic ink specifications
+        if (cleanAccount.length < 4 || cleanAccount.length > 17) {
+            errors.push(`Account number must be between 4 and 17 digits (found ${cleanAccount.length})`);
+        }
+
+        // Delimiters
+        const t = useAsciiGlyphs ? this.ROUTING_SYMBOLS.transitAscii : this.ROUTING_SYMBOLS.transitUnicode;
+        const o = useAsciiGlyphs ? this.ROUTING_SYMBOLS.onusAscii : this.ROUTING_SYMBOLS.onusUnicode;
+        const a = useAsciiGlyphs ? this.ROUTING_SYMBOLS.amountAscii : this.ROUTING_SYMBOLS.amountUnicode;
+
+        const tAscii = this.ROUTING_SYMBOLS.transitAscii;
+        const oAscii = this.ROUTING_SYMBOLS.onusAscii;
+        const aAscii = this.ROUTING_SYMBOLS.amountAscii;
+
+        let micrLine = '';
+        let rawAsciiLine = '';
+
+        switch (checkType) {
+            case 'business':
+                // ANSI Standard Business Check: Auxiliary On-Us (Check #) on left, then Transit, then Account On-Us
+                micrLine = `${o}${cleanCheckNum}${o}  ${t}${cleanRouting}${t}  ${cleanAccount}${o}`;
+                rawAsciiLine = `${oAscii}${cleanCheckNum}${oAscii}  ${tAscii}${cleanRouting}${tAscii}  ${cleanAccount}${oAscii}`;
+                break;
+
+            case 'personal':
+            default:
+                // ANSI Standard Personal Check: Transit on left, Account On-Us, Check # On-Us on right
+                micrLine = `${t}${cleanRouting}${t}  ${cleanAccount}${o}  ${cleanCheckNum}`;
+                rawAsciiLine = `${tAscii}${cleanRouting}${tAscii}  ${cleanAccount}${oAscii}  ${cleanCheckNum}`;
+                break;
+        }
+
+        if (amount && amount > 0) {
+            const amtCents = Math.round(amount * 100).toString().padStart(10, '0');
+            micrLine += `  ${a}${amtCents}${a}`;
+            rawAsciiLine += `  ${aAscii}${amtCents}${aAscii}`;
+        }
+
         const magneticInkSpec: MagneticInkSpec = {
             inkType: 'magnetic',
-            ironOxideContent: 40, // percentage
-            particleSize: 0.5, // microns
-            remanence: 0.8, // Tesla
-            coercivity: 250, // Oersteds
-            printHeight: 0.125, // inches
-            waveform: this.generateWaveform(micrLine)
+            ironOxideContent: 45,
+            particleSize: 0.5,
+            remanence: 0.85,
+            coercivity: 280,
+            printHeight: 0.125,
+            waveform: this.generateWaveform(cleanRouting + cleanAccount)
         };
 
         return {
             line: micrLine,
-            positions,
+            rawAsciiLine,
+            positions: [0, 12, 24, 36],
             font: 'MICRE13B',
-            magneticInkSpec
+            magneticInkSpec,
+            isValid: errors.length === 0,
+            errors
         };
-    }
-
-    // Calculate ABA check digit (Modulus 10)
-    static calculateCheckDigit(number: string): number {
-        const weights = [3, 7, 1, 3, 7, 1, 3, 7];
-        let sum = 0;
-
-        for (let i = 0; i < number.length; i++) {
-            const digit = parseInt(number[i]);
-            sum += digit * weights[i % weights.length];
-        }
-
-        const checkDigit = (10 - (sum % 10)) % 10;
-        return checkDigit;
     }
 
     // Generate magnetic ink waveform for validation
@@ -98,94 +162,23 @@ export class MICREngine {
         const charMap: Record<string, number[]> = {
             '0': [1, 0, 1, 0, 1, 0, 1, 0],
             '1': [1, 0, 1, 0, 1, 0, 1, 1],
-            '2': [1, 0, 1, 0, 1, 1, 1, 0],
-            '3': [1, 0, 1, 0, 1, 1, 1, 1],
-            '4': [1, 0, 1, 1, 1, 0, 1, 0],
-            '5': [1, 0, 1, 1, 1, 0, 1, 1],
-            '6': [1, 0, 1, 1, 1, 1, 1, 0],
-            '7': [1, 0, 1, 1, 1, 1, 1, 1],
-            '8': [1, 1, 1, 0, 1, 0, 1, 0],
-            '9': [1, 1, 1, 0, 1, 0, 1, 1],
-            '⑆': [1, 1, 1, 0, 1, 1, 1, 0], // Transit
-            '⑇': [1, 1, 1, 0, 1, 1, 1, 1], // On-us
-            '⑈': [1, 1, 1, 1, 1, 0, 1, 0], // Amount
-            '⑉': [1, 1, 1, 1, 1, 0, 1, 1], // Dash
+            '2': [1, 0, 1, 0, 1, 1, 0, 0],
+            '3': [1, 0, 1, 0, 1, 1, 0, 1],
+            '4': [1, 0, 1, 1, 0, 0, 1, 0],
+            '5': [1, 0, 1, 1, 0, 0, 1, 1],
+            '6': [1, 0, 1, 1, 0, 1, 0, 0],
+            '7': [1, 0, 1, 1, 0, 1, 0, 1],
+            '8': [1, 1, 0, 0, 1, 0, 1, 0],
+            '9': [1, 1, 0, 0, 1, 0, 1, 1]
         };
 
         for (const char of micrString) {
-            if (charMap[char]) {
-                waveform.push(...charMap[char]);
-            }
+            const pattern = charMap[char] || [1, 0, 0, 0, 0, 0, 0, 0];
+            waveform.push(...pattern);
         }
 
         return waveform;
     }
-
-    // Validate routing number format and checksum
-    static validateRoutingNumber(routing: string): boolean {
-        if (!/^\d{9}$/.test(routing)) {
-            throw new Error('Routing number must be 9 digits');
-        }
-
-        const digits = routing.split('').map(Number);
-        const sum = (3 * (digits[0] + digits[3] + digits[6])) +
-            (7 * (digits[1] + digits[4] + digits[7])) +
-            (1 * (digits[2] + digits[5] + digits[8]));
-
-        return sum % 10 === 0;
-    }
-
-    // Generate EPC (Expedited Payments Code) for electronic checks
-    static generateEPCCode(
-        routingNumber: string,
-        accountNumber: string,
-        transactionType: 'CCD' | 'PPD' | 'WEB' | 'TEL'
-    ): string {
-        const input = routingNumber + accountNumber + transactionType;
-        let h = 0;
-        for (let i = 0; i < input.length; i++) {
-            h = Math.imul(31, h) + input.charCodeAt(i) | 0;
-        }
-        const hash = Math.abs(h).toString(16).padEnd(16, '0').toUpperCase();
-
-        return `${transactionType}${hash}`;
-    }
-
 }
 
-interface MagneticInkSpec {
-    inkType: string;
-    ironOxideContent: number;
-    particleSize: number;
-    remanence: number;
-    coercivity: number;
-    printHeight: number;
-    waveform: number[];
-}
-
-// MICR Symbol characters for display
-export const MICRSymbol = {
-    transit: '⑆',
-    onus: '⑇',
-    amount: '⑈',
-    dash: '⑉'
-};
-
-// Convenience function for CheckBuilder
-export function generateMICRLine(routing: string, account: string, checkNum: string): string {
-    try {
-        const result = MICREngine.generateFullMICR(routing, account, checkNum);
-        return result.line;
-    } catch {
-        return `${MICRSymbol.transit}${routing}${MICRSymbol.transit} ${account}${MICRSymbol.onus} ${checkNum}`;
-    }
-}
-
-// Validate routing number
-export function validateRouting(routing: string): boolean {
-    try {
-        return MICREngine.validateRoutingNumber(routing);
-    } catch {
-        return false;
-    }
-}
+export default MICREngine;

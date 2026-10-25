@@ -146,17 +146,17 @@ class DepositValidator {
                 result.valid = false;
             }
 
-            // Validate check digits
-            const routingCheckDigit = this.calculateMICRCheckDigit(checkData.routingNumber);
-            const accountCheckDigit = this.calculateMICRCheckDigit(checkData.accountNumber);
-
-            if (!micr.line.includes(routingCheckDigit.toString())) {
-                result.errors.push('Routing number check digit mismatch');
-                result.valid = false;
-            }
-
-            if (!micr.line.includes(accountCheckDigit.toString())) {
-                result.errors.push('Account number check digit mismatch');
+            // Validate ABA Mod-10 checksum on routing number
+            const routingClean = String(checkData.routingNumber || '').replace(/\D/g, '');
+            if (routingClean.length === 9) {
+                const d = routingClean.split('').map(Number);
+                const sum = (3 * (d[0] + d[3] + d[6])) + (7 * (d[1] + d[4] + d[7])) + (1 * (d[2] + d[5] + d[8]));
+                if (sum % 10 !== 0) {
+                    result.errors.push('Routing number failed ABA Mod-10 checksum validation');
+                    result.valid = false;
+                }
+            } else {
+                result.errors.push('Routing number must be exactly 9 digits');
                 result.valid = false;
             }
 
@@ -196,13 +196,23 @@ class DepositValidator {
         // Mock Federal Reserve validation
         // In production, integrate with Fed's routing number directory
 
-        const invalidPrefixes = ['00', '01', '02']; // Invalid Federal Reserve prefixes
+        // Federal Reserve Routing Districts:
+        // 01-12: Normal Fed districts (01 Boston, 02 New York, 03 Philly, etc.)
+        // 21-32: Thrift institutions & credit unions
+        // 61-72: Wire / FedACH electronic
+        // 80: Traveler's checks
         const prefix = routingNumber.substring(0, 2);
+        const prefixNum = parseInt(prefix, 10);
 
-        if (invalidPrefixes.includes(prefix)) {
+        const isValidDistrict = (prefixNum >= 1 && prefixNum <= 12) ||
+            (prefixNum >= 21 && prefixNum <= 32) ||
+            (prefixNum >= 61 && prefixNum <= 72) ||
+            prefixNum === 80;
+
+        if (!isValidDistrict || prefix === '00') {
             return {
                 valid: false,
-                warnings: [`Invalid Federal Reserve prefix: ${prefix}`]
+                warnings: [`Invalid or unrecognized Federal Reserve prefix: ${prefix}`]
             };
         }
 
@@ -385,19 +395,18 @@ class DepositValidator {
             onus: '⑇'
         };
 
-        const routingCheckDigit = this.calculateMICRCheckDigit(routing);
-        const accountCheckDigit = this.calculateMICRCheckDigit(account);
+        const cleanRouting = String(routing).replace(/\D/g, '');
+        const cleanAccount = String(account).replace(/\D/g, '');
+        const cleanCheck = String(checkNumber).replace(/\D/g, '');
 
         return {
-            line: `${symbols.transit}${routing}${routingCheckDigit}` +
-                `${symbols.onus}${account}${accountCheckDigit}` +
-                `${symbols.onus}${checkNumber}`,
+            line: `${symbols.transit}${cleanRouting}${symbols.transit}  ` +
+                `${cleanAccount}${symbols.onus}  ` +
+                `${cleanCheck}`,
             components: {
-                routing,
-                routingCheckDigit,
-                account,
-                accountCheckDigit,
-                checkNumber
+                routing: cleanRouting,
+                account: cleanAccount,
+                checkNumber: cleanCheck
             }
         };
     }

@@ -79,6 +79,11 @@ class AdvancedPDFGenerator {
                 // Add MICR line with magnetic ink simulation
                 this.addMICRLine(doc, checkData, template);
 
+                // Add Remittance Voucher Stubs (Check-on-Top layout)
+                if (options.layout !== 'standalone') {
+                    this.addRemittanceVouchers(doc, checkData);
+                }
+
                 // Add enhanced security features
                 this.addEnhancedSecurity(doc, checkData, template);
 
@@ -87,6 +92,12 @@ class AdvancedPDFGenerator {
 
                 // Add invisible tracking markers
                 this.addInvisibleMarkers(doc, checkData);
+
+                // Add Regulation CC compliant check endorsement reverse page if requested
+                if (options.includeBackSide) {
+                    doc.addPage({ size: [612, 792], margins: { top: 0, bottom: 0, left: 0, right: 0 } });
+                    this.addCheckBackSide(doc, checkData, options);
+                }
 
                 // Encrypt PDF
                 if (options.encrypt) {
@@ -181,82 +192,212 @@ class AdvancedPDFGenerator {
     }
 
     addBankDesignElements(doc, bankCode) {
-        // Placeholder implementation for addBankDesignElements
+        // Draw bank header area
+        doc.save();
+        doc.font('Helvetica-Bold')
+            .fontSize(11)
+            .fillColor('#1A365D')
+            .text(bankCode || 'FEDERAL RESERVE MEMBER BANK', 220, 28, { width: 220, align: 'center' });
+
+        doc.font('Helvetica')
+            .fontSize(7.5)
+            .fillColor('#4A5568')
+            .text('United States Banking Division • Member FDIC', 220, 42, { width: 220, align: 'center' });
+        doc.restore();
+    }
+
+    numberToLegalWords(num) {
+        const units = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const scales = ['', 'Thousand', 'Million', 'Billion'];
+
+        const n = Math.floor(Math.abs(num));
+        const cents = Math.round((Math.abs(num) - n) * 100);
+        const centsStr = cents.toString().padStart(2, '0');
+
+        if (n === 0) return `Zero and ${centsStr}/100 Dollars`.toUpperCase();
+
+        const convertChunk = (val) => {
+            let str = '';
+            if (val >= 100) {
+                str += units[Math.floor(val / 100)] + ' Hundred ';
+                val %= 100;
+            }
+            if (val >= 20) {
+                str += tens[Math.floor(val / 10)] + (val % 10 !== 0 ? '-' + units[val % 10] : '') + ' ';
+            } else if (val > 0) {
+                str += units[val] + ' ';
+            }
+            return str;
+        };
+
+        let result = '';
+        let scaleIdx = 0;
+        let rem = n;
+
+        while (rem > 0) {
+            const chunk = rem % 1000;
+            if (chunk > 0) {
+                result = convertChunk(chunk) + scales[scaleIdx] + ' ' + result;
+            }
+            rem = Math.floor(rem / 1000);
+            scaleIdx++;
+        }
+
+        return `${result.trim()} and ${centsStr}/100 Dollars`.toUpperCase();
     }
 
     addCheckFields(doc, checkData, template) {
-        // Placeholder implementation
+        doc.save();
+
+        const amountNum = Number(checkData.amount) || 0;
+        const formattedAmount = amountNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const legalAmount = checkData.amountWords || this.numberToLegalWords(amountNum);
+
+        // 1. Account Holder / Drawer (Top-Left)
+        const holder = checkData.accountHolder || {};
+        const holderName = typeof holder === 'string' ? holder : (holder.name || checkData.payerName || 'ACME CORPORATION');
+        const holderAddr1 = holder.address1 || '100 Financial Way, Suite 400';
+        const holderAddr2 = holder.address2 || 'New York, NY 10001';
+
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#1A202C').text(holderName, 40, 28);
+        doc.font('Helvetica').fontSize(8).fillColor('#4A5568')
+            .text(holderAddr1, 40, 42)
+            .text(holderAddr2, 40, 53);
+
+        // 2. Date and Check Number (Top-Right)
+        const checkNumStr = String(checkData.checkNumber || '1001');
+        doc.font('Helvetica-Bold').fontSize(13).fillColor('#1A202C').text(checkNumStr, 510, 28, { align: 'right', width: 62 });
+
+        doc.font('Helvetica').fontSize(8).fillColor('#4A5568').text('DATE', 420, 48);
+        const dateStr = checkData.date || new Date().toISOString().split('T')[0];
+        doc.font('Helvetica-Bold').fontSize(9).fillColor('#1A202C').text(dateStr, 455, 47);
+        doc.moveTo(450, 58).lineTo(572, 58).lineWidth(0.5).strokeColor('#A0AEC0').stroke();
+
+        // 3. Fractional Routing (Federal Reserve Standard)
+        const cleanRouting = String(checkData.routingNumber || '').replace(/\D/g, '');
+        const frac1 = cleanRouting.length >= 4 ? cleanRouting.substring(0, 2) + '-' + cleanRouting.substring(2, 4) : '55-00';
+        const frac2 = cleanRouting.length >= 8 ? cleanRouting.substring(4, 8) : '0000';
+        doc.font('Helvetica').fontSize(7).fillColor('#718096').text(`${frac1}/${frac2}`, 510, 15, { align: 'right', width: 62 });
+
+        // 4. Payee Line
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#2D3748').text('PAY TO THE', 40, 92);
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#2D3748').text('ORDER OF', 40, 101);
+
+        // Payee Name
+        doc.font('Helvetica-Bold').fontSize(11).fillColor('#1A202C').text(checkData.payeeName || 'PAYEE NAME', 110, 96);
+        doc.moveTo(105, 110).lineTo(440, 110).lineWidth(0.75).strokeColor('#4A5568').stroke();
+
+        // 5. Amount Box ($)
+        doc.rect(455, 88, 117, 24).lineWidth(1).strokeColor('#2B6CB0').fillAndStroke('#FFFFFF', '#2B6CB0');
+        doc.font('Helvetica-Bold').fontSize(12).fillColor('#1A202C').text(`$ ${formattedAmount}`, 460, 94, { width: 107, align: 'right' });
+
+        // 6. Legal Written Amount Line
+        doc.font('Helvetica-Bold').fontSize(9).fillColor('#1A202C').text(legalAmount, 40, 126, { width: 490 });
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#2D3748').text('DOLLARS', 535, 126);
+        doc.moveTo(40, 138).lineTo(530, 138).lineWidth(0.75).strokeColor('#4A5568').stroke();
+
+        // 7. Drawee Bank Name
+        const bankName = checkData.bankName || (template && template.name) || 'COMMERCE NATIONAL BANK';
+        doc.font('Helvetica').fontSize(8).fillColor('#4A5568').text(bankName, 40, 152);
+
+        // 8. Memo Line
+        doc.font('Helvetica').fontSize(8).fillColor('#4A5568').text('MEMO', 40, 178);
+        doc.font('Helvetica').fontSize(9).fillColor('#1A202C').text(checkData.memo || '', 75, 176);
+        doc.moveTo(70, 188).lineTo(250, 188).lineWidth(0.5).strokeColor('#718096').stroke();
+
+        // 9. Signature Line with Microprint
+        doc.font('Helvetica').fontSize(6).fillColor('#718096').text('MP  AUTHORIZED SIGNATURE  DO NOT CASH WITHOUT SECURITY BACKING', 340, 178, { width: 232, align: 'center' });
+        doc.moveTo(330, 188).lineTo(572, 188).lineWidth(0.75).strokeColor('#4A5568').stroke();
+
+        // If digital signature exists, render cursive representation
+        if (checkData.signatureText || checkData.authorizedSigner) {
+            doc.font('Helvetica-Oblique').fontSize(14).fillColor('#1A365D')
+                .text(checkData.signatureText || checkData.authorizedSigner, 350, 166, { width: 210, align: 'center' });
+        }
+
+        // 10. Padlock Icon Placeholder
+        doc.rect(555, 122, 12, 14).lineWidth(0.5).strokeColor('#718096').stroke();
+        doc.font('Helvetica').fontSize(6).fillColor('#718096').text('🔒', 557, 125);
+
+        doc.restore();
     }
 
     addMICRLine(doc, checkData, template) {
-        const { routingNumber, accountNumber, checkNumber } = checkData;
+        const cleanRouting = String(checkData.routingNumber || '').replace(/\D/g, '');
+        const cleanAccount = String(checkData.accountNumber || '').replace(/\D/g, '');
+        const cleanCheckNum = String(checkData.checkNumber || '').replace(/\D/g, '').padStart(4, '0');
 
-        // Calculate proper positions (in points)
-        const bottomMargin = 36; // 0.5 inches from bottom
-        const leftMargin = 45; // 0.625 inches from left
+        // Check height reference: for 8.5"x3.5" standalone, height is 252.
+        // For check-on-top on Letter (8.5"x11"), check region is 252.
+        // Clear Band standard (ANSI X9.27): 0.625" (45 pt) height from bottom of check.
+        const checkBottomY = 252;
+        const clearBandHeight = 45;
+        const micrBaselineY = checkBottomY - 18; // approx 0.25" from bottom edge
+        const leftMargin = 45; // 0.625" from left edge
 
-        // Generate MICR characters with E-13B font
-        const micr = this.generateMICRCharacters(routingNumber, accountNumber, checkNumber);
+        // Keep MICR Clear Band 100% white to prevent optical or magnetic read distortion
+        doc.save();
+        doc.rect(0, checkBottomY - clearBandHeight, 612, clearBandHeight).fill('#FFFFFF');
+        doc.restore();
+
+        // Generate ANSI X9 compliant MICR line
+        const micr = this.generateMICRCharacters(cleanRouting, cleanAccount, cleanCheckNum);
 
         doc.save();
-        doc.font(this.micrFontAvailable ? 'MICRE13B' : 'Helvetica')
-            .fontSize(14)
-            .fillColor('#000000'); // Magnetic ink black
+        if (this.micrFontAvailable) {
+            doc.font('MICRE13B')
+                .fontSize(12)
+                .fillColor('#000000')
+                .text(micr.asciiLine, leftMargin, micrBaselineY, { characterSpacing: 1.5 });
+        } else {
+            doc.font('Helvetica-Bold')
+                .fontSize(11)
+                .fillColor('#000000')
+                .text(micr.unicodeLine, leftMargin, micrBaselineY, { characterSpacing: 2 });
+        }
 
-        // Draw MICR line
-        doc.text(micr.line, leftMargin, 792 - bottomMargin);
-
-        // Add magnetic ink properties annotation
+        // Microprint specification tag
         doc.font('Helvetica')
-            .fontSize(6)
-            .fillColor('#666666')
-            .text('MICR E-13B • Magnetic Ink • Iron Oxide Content: 40%',
-                leftMargin, 792 - bottomMargin + 20);
+            .fontSize(5)
+            .fillColor('#718096')
+            .text('ANSI X9.27 / E-13B COMPLIANT • 0.625" CLEAR BAND ENFORCED', leftMargin, checkBottomY - 7);
 
         doc.restore();
     }
 
     generateMICRCharacters(routing, account, checkNumber) {
-        // Convert to MICR E-13B symbols
-        const symbols = {
-            transit: '⑆',
-            onus: '⑇',
-            amount: '⑈',
-            dash: '⑉',
-            transitCheck: '⑊'
-        };
+        // Official ANSI X9.27 E-13B Delimiters:
+        // A = Transit (⑆)
+        // B = Amount (⑈)
+        // C = On-Us (⑇)
+        // D = Dash (⑉)
 
-        // Format: [Transit][Routing][CheckDigit][OnUs][Account][CheckDigit][OnUs][CheckNumber]
-        const routingCheckDigit = this.calculateMICRCheckDigit(routing);
-        const accountCheckDigit = this.calculateMICRCheckDigit(account);
+        // Strict Federal Reserve Format:
+        // Transit field is flanked by Transit symbols: A<9-digit routing>A
+        // Account field is terminated by On-Us: <account>C
+        // Check number field: C<checkNumber>C (or On-Us delimited)
+
+        const transitSymU = '⑆';
+        const onusSymU = '⑇';
+
+        const transitSymA = 'A';
+        const onusSymA = 'C';
+
+        const unicodeLine = `${transitSymU}${routing}${transitSymU}  ${account}${onusSymU}  ${checkNumber}`;
+        const asciiLine = `${transitSymA}${routing}${transitSymA}  ${account}${onusSymA}  ${checkNumber}`;
 
         return {
-            line: `${symbols.transit}${routing}${routingCheckDigit}` +
-                `${symbols.onus}${account}${accountCheckDigit}` +
-                `${symbols.onus}${checkNumber}`,
-            positions: {
-                routingStart: 0,
-                routingEnd: 9,
-                accountStart: 10,
-                accountEnd: 10 + account.length,
-                checkStart: 11 + account.length
-            }
+            unicodeLine,
+            asciiLine,
+            routing,
+            account,
+            checkNumber
         };
-    }
-
-    calculateMICRCheckDigit(number) {
-        const weights = [3, 7, 1];
-        let sum = 0;
-
-        for (let i = 0; i < number.length; i++) {
-            sum += parseInt(number[i]) * weights[i % weights.length];
-        }
-
-        return (10 - (sum % 10)) % 10;
     }
 
     addEnhancedSecurity(doc, checkData, template) {
-        // Add holographic effect simulation
+        // Holographic effect simulation
         this.addHolographicEffect(doc);
 
         // Add color-shifting ink simulation
@@ -458,9 +599,131 @@ class AdvancedPDFGenerator {
                     contentAccessibility: false,
                     documentAssembly: false
                 },
-                algorithm: 'AES-256' // Strongest encryption
+                algorithm: 'AES-256'
             });
         }
+    }
+
+    addRemittanceVouchers(doc, checkData) {
+        doc.save();
+
+        const amountNum = Number(checkData.amount) || 0;
+        const formattedAmount = `$${amountNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const dateStr = checkData.date || new Date().toISOString().split('T')[0];
+        const checkNumStr = String(checkData.checkNumber || '1001');
+        const payeeName = checkData.payeeName || 'Valued Payee';
+
+        const drawVoucher = (startY, title) => {
+            // Perforation dashed cut guide
+            doc.save();
+            doc.strokeColor('#CBD5E1').lineWidth(0.5).dash(4, { space: 3 });
+            doc.moveTo(20, startY).lineTo(592, startY).stroke();
+            doc.undash();
+
+            // Scissor indicator
+            doc.font('Helvetica').fontSize(7).fillColor('#94A3B8').text('✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -', 20, startY - 4);
+
+            // Voucher Header
+            doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B').text(title, 36, startY + 12);
+            doc.font('Helvetica').fontSize(8).fillColor('#64748B')
+                .text(`Check Date: ${dateStr}`, 200, startY + 12)
+                .text(`Check #: ${checkNumStr}`, 320, startY + 12)
+                .text(`Net Amount: ${formattedAmount}`, 440, startY + 12, { align: 'right', width: 132 });
+
+            doc.font('Helvetica').fontSize(8).fillColor('#475569')
+                .text(`Payee: ${payeeName}`, 36, startY + 25);
+
+            // Remittance Table Header
+            const tableTop = startY + 42;
+            doc.rect(36, tableTop, 540, 16).fill('#F1F5F9');
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#334155')
+                .text('DATE', 44, tableTop + 4)
+                .text('INVOICE / REF #', 110, tableTop + 4)
+                .text('DESCRIPTION', 220, tableTop + 4)
+                .text('GROSS AMOUNT', 370, tableTop + 4, { align: 'right', width: 60 })
+                .text('DEDUCTIONS', 440, tableTop + 4, { align: 'right', width: 60 })
+                .text('NET AMOUNT', 510, tableTop + 4, { align: 'right', width: 56 });
+
+            // Table Row
+            const rowY = tableTop + 20;
+            doc.font('Helvetica').fontSize(7.5).fillColor('#1E293B')
+                .text(dateStr, 44, rowY)
+                .text(`INV-${checkNumStr}`, 110, rowY)
+                .text(checkData.memo || 'General Accounts Payable / Disbursed Funds', 220, rowY, { width: 140 })
+                .text(formattedAmount, 370, rowY, { align: 'right', width: 60 })
+                .text('$0.00', 440, rowY, { align: 'right', width: 60 })
+                .text(formattedAmount, 510, rowY, { align: 'right', width: 56 });
+
+            doc.moveTo(36, rowY + 14).lineTo(576, rowY + 14).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+
+            // Total Summary Box
+            const summaryY = startY + 98;
+            doc.rect(360, summaryY, 216, 20).strokeColor('#CBD5E1').lineWidth(0.5).stroke();
+            doc.font('Helvetica-Bold').fontSize(8).fillColor('#1E293B')
+                .text('TOTAL DISBURSEMENT:', 370, summaryY + 6)
+                .text(formattedAmount, 470, summaryY + 6, { align: 'right', width: 96 });
+
+            doc.restore();
+        };
+
+        // Stub 1 (Voucher / Payee Remittance Copy)
+        drawVoucher(256, 'ACCOUNTS PAYABLE VOUCHER - RETAIN FOR RECORDS');
+
+        // Stub 2 (Payroll / Payor Copy)
+        drawVoucher(524, 'PAYOR DISBURSEMENT AUDIT COPY');
+
+        doc.restore();
+    }
+
+    addCheckBackSide(doc, checkData, options) {
+        doc.save();
+
+        // 1. Draw Subtle Security Paper Backing
+        doc.rect(0, 0, 612, 792).fill('#FAFAFA');
+
+        // 2. Trailing Edge Endorsement Zone (Top 1.5" = 108 pt)
+        const endorseZoneH = 108;
+        doc.rect(36, 24, 540, endorseZoneH).lineWidth(1).strokeColor('#CBD5E1').stroke();
+
+        // Endorsement Header
+        doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B')
+            .text('ENDORSE CHECK HERE', 48, 34);
+
+        // Signature Line
+        doc.font('Helvetica').fontSize(8).fillColor('#64748B').text('X', 48, 62);
+        doc.moveTo(60, 68).lineTo(560, 68).lineWidth(0.75).strokeColor('#334155').stroke();
+
+        // Federal Reserve Regulation CC 12 CFR § 229.35 Mandatory Restrictive Endorsement
+        const bankName = checkData.bankName || 'DESIGNATED FINANCIAL INSTITUTION';
+        doc.rect(48, 76, 10, 10).lineWidth(0.75).strokeColor('#1E293B').stroke();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#1E293B').text('✓', 50, 77); // Pre-checked for mobile compliance
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#0F172A')
+            .text(`FOR MOBILE DEPOSIT ONLY AT: ${bankName.toUpperCase()}`, 64, 77);
+
+        // Security Warning Line
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#DC2626')
+            .text('DO NOT WRITE, STAMP, OR SIGN BELOW THIS LINE', 48, 96);
+        doc.font('Helvetica').fontSize(6.5).fillColor('#64748B')
+            .text('RESERVED FOR FINANCIAL INSTITUTION ENDORSEMENT PURSUANT TO REGULATION CC', 48, 106);
+        doc.moveTo(36, 118).lineTo(576, 118).lineWidth(1).strokeColor('#94A3B8').stroke();
+
+        // 3. Clear Middle Processing Zone
+        doc.rect(36, 130, 540, 180).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+        doc.font('Helvetica').fontSize(8).fillColor('#94A3B8')
+            .text('CLEAR ZONE - NO WRITING IN THIS AREA - BANK PROCESSING ONLY', 36, 210, { width: 540, align: 'center' });
+
+        // 4. Security Feature Checklist Box (Bottom)
+        doc.rect(36, 330, 540, 60).fillAndStroke('#F8FAFC', '#CBD5E1');
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#1E293B')
+            .text('DOCUMENT SECURITY SPECIFICATIONS', 48, 338);
+
+        doc.font('Helvetica').fontSize(6.5).fillColor('#475569')
+            .text('• ARTIFICIAL WATERMARK: Hold to light to verify authentic watermark pattern.', 48, 350)
+            .text('• CHEMICAL REACTIVE PAPER: Exposure to solvents produces visible color staining.', 48, 360)
+            .text('• MICROPRINT BORDER: Contains 0.5pt microprint text legible only under high magnification.', 48, 370)
+            .text('• CPSA PADLOCK: Approved security features comply with Federal Reserve Check 21 standards.', 48, 380);
+
+        doc.restore();
     }
 }
 

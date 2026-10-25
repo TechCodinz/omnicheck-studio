@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Verification {
     id: number;
@@ -25,15 +26,22 @@ interface SystemStats {
 }
 
 const AdminDashboard: React.FC = () => {
+    const { token, isAuthenticated, isAdmin, openAuthModal } = useAuth();
     const [verifications, setVerifications] = useState<Verification[]>([]);
     const [achBatches, setAchBatches] = useState<ACHBatch[]>([]);
     const [stats, setStats] = useState<SystemStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [unauthorized, setUnauthorized] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!token) {
+                setUnauthorized(true);
+                setLoading(false);
+                return;
+            }
+
             try {
-                const token = localStorage.getItem('token');
                 const headers = { 'Authorization': `Bearer ${token}` };
 
                 const [resVerifications, resBatches, resStats] = await Promise.all([
@@ -42,6 +50,12 @@ const AdminDashboard: React.FC = () => {
                     fetch(apiUrl('/api/admin/stats'), { headers })
                 ]);
 
+                if (resStats.status === 401 || resStats.status === 403) {
+                    setUnauthorized(true);
+                    setLoading(false);
+                    return;
+                }
+
                 const verificationsData = await resVerifications.json();
                 const batchesData = await resBatches.json();
                 const statsData = await resStats.json();
@@ -49,6 +63,7 @@ const AdminDashboard: React.FC = () => {
                 setVerifications(Array.isArray(verificationsData) ? verificationsData : []);
                 setAchBatches(Array.isArray(batchesData) ? batchesData : []);
                 setStats(statsData);
+                setUnauthorized(false);
             } catch (error) {
                 console.error('Failed to fetch admin data:', error);
             } finally {
@@ -57,9 +72,47 @@ const AdminDashboard: React.FC = () => {
         };
 
         fetchData();
-    }, []);
+    }, [token]);
 
     if (loading) return <div style={{ padding: '20px', color: '#fff' }}>Loading Admin Dashboard...</div>;
+
+    if (unauthorized || !isAdmin) {
+        return (
+            <div style={{ padding: '40px', backgroundColor: '#1a1a1a', minHeight: '100vh', color: '#e0e0e0', fontFamily: 'Inter, sans-serif' }}>
+                <h1 style={{ borderBottom: '1px solid #333', paddingBottom: '20px', marginBottom: '30px' }}>Admin Mission Control</h1>
+                <div style={{
+                    background: '#242b35',
+                    border: '1px solid #3b4252',
+                    borderRadius: '12px',
+                    padding: '32px',
+                    maxWidth: '560px',
+                    margin: '40px auto',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+                    <h2 style={{ color: '#fff', fontSize: '20px', marginBottom: '12px' }}>Admin Authorization Required</h2>
+                    <p style={{ color: '#9CA3AF', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+                        Access to the verification queues, ACH settlement batches, and real-time bank telemetry is restricted to authenticated administrator accounts.
+                    </p>
+                    <button
+                        onClick={() => openAuthModal('login')}
+                        style={{
+                            padding: '12px 24px',
+                            background: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Sign In as Administrator
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{ padding: '40px', backgroundColor: '#1a1a1a', minHeight: '100vh', color: '#e0e0e0', fontFamily: 'Inter, sans-serif' }}>

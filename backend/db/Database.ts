@@ -92,8 +92,26 @@ export const initDatabase = () => {
             FOREIGN KEY (template_id) REFERENCES tax_templates(id)
         );
 
+        -- Invoicing & Merchant Payment Processing Engine
+        CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            merchant_id TEXT,
+            client_name TEXT NOT NULL,
+            client_email TEXT NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT DEFAULT 'USD',
+            status TEXT DEFAULT 'SENT',
+            items TEXT NOT NULL,
+            payment_method TEXT,
+            payout_destination TEXT,
+            payout_details TEXT,
+            trial_deposits TEXT,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            paid_at DATETIME
+        );
     `);
-    console.log('Database initialized successfully (inc. Phase 34 schemas).');
+    console.log('Database initialized successfully (inc. Phase 34 & Invoicing schemas).');
 };
 
 export class DB {

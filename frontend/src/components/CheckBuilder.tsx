@@ -15,6 +15,10 @@ import { BorderlineEngine, BorderConfig } from './BorderlineEngine';
 import UltimateCustomizationPanel from './UltimateCustomizationPanel';
 import { processAiPrompt } from '../engines/AiDesignEngine';
 import { useLicense } from '../contexts/LicenseContext';
+import { useAuth } from '../contexts/AuthContext';
+import apiClient from '../services/apiClient';
+import { MICRComplianceEngine } from '../engines/MICRComplianceEngine';
+import { convertToWords } from '../utils/numberToWords';
 
 // ============== CONSTANTS ==============
 // Standard Business Check: 8.25" x 3.00" -> 825px x 300px (100px/inch base)
@@ -802,6 +806,8 @@ const SignatureLab: React.FC<SignatureLabProps> = ({
 // ============== MAIN COMPONENT ==============
 const CheckBuilder: React.FC = () => {
     const { isPaid, canExport, useCheckExport, currentPlan, checksRemaining, activatePlan, isEnterprise } = useLicense();
+    const { isAuthenticated, openAuthModal } = useAuth();
+    const [isExportingServerPdf, setIsExportingServerPdf] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const checkBackRef = useRef<{ getDataURL: () => string | null }>(null);
     const [fabricCanvas, setFabricCanvas] = useState<any | null>(null);
@@ -867,7 +873,7 @@ const CheckBuilder: React.FC = () => {
         date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
         amount: 1234.56,
         payeeName: '',
-        writtenAmount: '1,234 and 56/100',
+        writtenAmount: convertToWords(1234.56),
         bankName: 'Bank of Omni',
         memo: '',
         routingNumber: '122000218',
@@ -899,6 +905,7 @@ const CheckBuilder: React.FC = () => {
     const [isSignatureLabOpen, setIsSignatureLabOpen] = useState(false);
 
     const [showMicrGuide, setShowMicrGuide] = useState(false);
+    const [showComplianceDetails, setShowComplianceDetails] = useState(false);
 
     // Mod-10 Routing Validation
     const isValidRouting = (routing: string) => {
@@ -3208,6 +3215,12 @@ const CheckBuilder: React.FC = () => {
         setCheckData(prev => {
             const newData = { ...prev, [field]: value };
 
+            // Auto-synchronize legal written words with numeric dollar amount (UCC § 3-114 compliance)
+            if (field === 'amount') {
+                const numericVal = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.]/g, '')) || 0;
+                newData.writtenAmount = convertToWords(numericVal);
+            }
+
             // Auto-fill bank details if routing number is provided
             if (field === 'routingNumber') {
                 const routing = value.toString().replace(/\D/g, '').trim();
@@ -3545,6 +3558,107 @@ const CheckBuilder: React.FC = () => {
         } catch (err) {
             console.error('PDF Generation Error:', err);
             alert('Failed to generate PDF. See console for details.');
+        }
+    };
+
+    const handleServerPdfExport = async () => {
+        if (!isAuthenticated) {
+            alert('⚠️ Please sign in to generate bank-grade vector PDFs with verified MICR lines and security elements.');
+            openAuthModal('login');
+            return;
+        }
+
+        setIsExportingServerPdf(true);
+        try {
+            const routingClean = String(checkData.routingNumber || '').replace(/\D/g, '');
+            const accountClean = String(checkData.accountNumber || '').replace(/\D/g, '');
+
+            if (routingClean.length !== 9) {
+                alert(`⚠️ Routing number must be exactly 9 digits (currently ${routingClean.length}).`);
+                setIsExportingServerPdf(false);
+                return;
+            }
+
+            if (accountClean.length < 4 || accountClean.length > 17) {
+                alert(`⚠️ Account number must be between 4 and 17 digits (currently ${accountClean.length}).`);
+                setIsExportingServerPdf(false);
+                return;
+            }
+
+            const cleanAmount = typeof checkData.amount === 'number' ? checkData.amount : parseFloat(String(checkData.amount).replace(/[^0-9.]/g, '')) || 0;
+            if (cleanAmount <= 0) {
+                alert('⚠️ Check amount must be a positive number.');
+                setIsExportingServerPdf(false);
+                return;
+            }
+
+            const payloadData = {
+                ...checkData,
+                checkNumber: checkData.checkNumber || '1001',
+                payeeName: checkData.payeeName || 'Valued Payee',
+                amount: cleanAmount,
+                amountWords: checkData.writtenAmount || convertToWords(cleanAmount),
+                routingNumber: routingClean,
+                accountNumber: accountClean,
+                bankName: checkData.bankName || 'Federal Reserve Member Bank',
+                memo: checkData.memo || '',
+                date: checkData.date
+            };
+
+            const result = await apiClient.downloadPdf(payloadData, 'premium-1', {
+                layout: 'check-on-top',
+                includeBackSide: true,
+                securityFeatures: securityFeatures.filter(f => f.enabled).map(f => f.id)
+            });
+
+            if (!result.success || !result.blob) {
+                alert(`❌ Server PDF generation failed: ${result.error}`);
+            } else {
+                const url = window.URL.createObjectURL(result.blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.filename || `check_${payloadData.checkNumber}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                alert('✅ Bank-Grade Vector PDF successfully generated and downloaded!');
+            }
+        } catch (err: any) {
+            console.error('Server PDF Error:', err);
+            alert(`Error: ${err.message || 'Failed to communicate with PDF engine.'}`);
+        } finally {
+            setIsExportingServerPdf(false);
+        }
+    };
+
+    const handleSaveTemplate = async () => {
+        if (!isAuthenticated) {
+            alert('⚠️ Please sign in to save templates to your cloud account.');
+            openAuthModal('login');
+            return;
+        }
+
+        try {
+            const templateData = {
+                name: `${checkData.bankName || 'Custom'} Template ${Date.now().toString().slice(-4)}`,
+                checkStyle,
+                selectedFont,
+                selectedTexture,
+                paperColor,
+                borderConfig,
+                securityFeatures: securityFeatures.filter(f => f.enabled).map(f => f.id),
+                checkData
+            };
+
+            const res = await apiClient.post('/api/save-template', { templateData });
+            if (res.success) {
+                alert(`✅ Template "${templateData.name}" saved to cloud!`);
+            } else {
+                alert(`❌ Failed to save template: ${res.error}`);
+            }
+        } catch (err: any) {
+            alert(`❌ Error saving template: ${err.message}`);
         }
     };
 
@@ -4591,12 +4705,25 @@ const CheckBuilder: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <button onClick={handleDownloadPDF} style={dropdownItemStyle}>📄 Download Secure PDF</button>
+                                <button
+                                    onClick={handleServerPdfExport}
+                                    disabled={isExportingServerPdf}
+                                    style={{ ...dropdownItemStyle, color: '#10B981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.08)' }}
+                                >
+                                    {isExportingServerPdf ? '⏳ Generating Bank PDF...' : '🏦 Export Bank-Grade Vector PDF (Server)'}
+                                </button>
+                                <button onClick={handleDownloadPDF} style={dropdownItemStyle}>
+                                    📄 Export Canvas Preview PDF (Instant)
+                                </button>
                                 <button style={dropdownItemStyle}>📧 Email to Payee</button>
                                 <button style={dropdownItemStyle}>🖨️ Direct Print (Pro)</button>
-                                <button onClick={handleGenerateMobileShot} style={{ ...dropdownItemStyle, color: '#F97316', fontWeight: 600 }}>📸 Mobile Deposit Shot (Final)</button>
+                                <button onClick={handleGenerateMobileShot} style={{ ...dropdownItemStyle, color: '#F97316', fontWeight: 600 }}>
+                                    📸 Mobile Deposit Shot (Final)
+                                </button>
                                 <div style={{ height: 1, background: '#f0f0f0', margin: '8px 4px' }} />
-                                <button style={{ ...dropdownItemStyle, color: '#2c3e50', fontWeight: 600 }}>💾 Save Studio Template</button>
+                                <button onClick={handleSaveTemplate} style={{ ...dropdownItemStyle, color: '#2563EB', fontWeight: 600 }}>
+                                    💾 Save Cloud Template
+                                </button>
                             </div>
                         )
                     }
@@ -4609,16 +4736,90 @@ const CheckBuilder: React.FC = () => {
 
             {/* RIGHT SIDE - PREVIEW */}
             <div style={previewContainerStyle}>
-                <div style={previewHeaderStyle}>
+                <div style={{ ...previewHeaderStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ color: '#4CAF50', fontSize: '8px' }}>●</span>
-                        <span style={{ color: '#64748B', fontSize: '11px', fontWeight: '500' }}>
+                        <span style={{ color: '#E2E8F0', fontSize: '11px', fontWeight: '600' }}>
                             Live Preview
                         </span>
-                        <span style={{ color: '#475569', fontSize: '10px', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <span style={{ color: '#94A3B8', fontSize: '10px', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
                             {checkDimensions.width / 100}" × {checkDimensions.height / 100}" @ 100 DPI
                         </span>
                     </div>
+
+                    {/* Zero-Decline Bank Compliance Widget */}
+                    {(() => {
+                        const compliance = MICRComplianceEngine.evaluateZeroDeclineCompliance({
+                            routingNumber: checkData.routingNumber,
+                            accountNumber: checkData.accountNumber,
+                            checkNumber: checkData.checkNumber,
+                            amount: checkData.amount,
+                            payeeName: checkData.payeeName,
+                            date: checkData.date
+                        });
+
+                        return (
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    onClick={() => setShowComplianceDetails(!showComplianceDetails)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        padding: '4px 10px',
+                                        background: compliance.is100PercentCompliant ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                        border: `1px solid ${compliance.is100PercentCompliant ? '#10B981' : '#F59E0B'}`,
+                                        borderRadius: '6px',
+                                        color: compliance.is100PercentCompliant ? '#34D399' : '#FBBF24',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <span>{compliance.is100PercentCompliant ? '🛡️' : '⚠️'}</span>
+                                    <span>{compliance.is100PercentCompliant ? '100% Zero-Decline Bank Guaranteed' : `Bank Acceptance Score: ${compliance.score}%`}</span>
+                                    <span style={{ fontSize: '9px', opacity: 0.8 }}>{showComplianceDetails ? '▲' : '▼'}</span>
+                                </button>
+
+                                {showComplianceDetails && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '110%',
+                                        right: 0,
+                                        width: '340px',
+                                        background: '#0F172A',
+                                        border: '1px solid #334155',
+                                        borderRadius: '10px',
+                                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+                                        padding: '12px',
+                                        zIndex: 200,
+                                        color: '#F8FAFC'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #1E293B', paddingBottom: 6 }}>
+                                            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#38BDF8' }}>
+                                                Check 21 & Fed Reserve Audit
+                                            </span>
+                                            <span style={{ fontSize: '11px', fontWeight: 700, color: compliance.is100PercentCompliant ? '#34D399' : '#FBBF24' }}>
+                                                {compliance.score}% Score
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {compliance.checks.map(item => (
+                                                <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '11px', lineHeight: 1.3 }}>
+                                                    <span style={{ color: item.passed ? '#34D399' : '#F87171' }}>{item.passed ? '✓' : '✗'}</span>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600, color: item.passed ? '#E2E8F0' : '#FCA5A5' }}>{item.label}</div>
+                                                        <div style={{ fontSize: '10px', color: '#94A3B8' }}>{item.message}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 <div style={toolbarStyle}>

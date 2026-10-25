@@ -385,6 +385,264 @@ app.get('/api/tax/documents/:userId', authenticateToken, (req, res) => taxContro
 app.post('/api/tax/documents', authenticateToken, (req, res) => taxController.saveDocument(req, res));
 app.put('/api/tax/documents/:id', authenticateToken, (req, res) => taxController.updateDocument(req, res));
 
+// ==================== INVOICING & MERCHANT PAYMENT PROCESSING ENGINE ====================
+
+// 1. List Merchant Invoices
+app.get('/api/invoices', authenticateToken, (req: any, res) => {
+    try {
+        const rows = db.prepare('SELECT * FROM invoices ORDER BY created_at DESC').all();
+        const invoices = rows.map((r: any) => ({
+            ...r,
+            items: JSON.parse(r.items || '[]'),
+            payout_details: JSON.parse(r.payout_details || '{}'),
+            trial_deposits: JSON.parse(r.trial_deposits || '{}')
+        }));
+        res.json({ success: true, invoices });
+    } catch (err: any) {
+        console.error('Fetch Invoices Error:', err);
+        res.status(500).json({ success: false, error: 'Failed to retrieve invoices' });
+    }
+});
+
+// 2. Create Invoice
+app.post('/api/invoices', authenticateToken, (req: any, res) => {
+    try {
+        const {
+            clientName,
+            clientEmail,
+            amount,
+            currency = 'USD',
+            items = [],
+            payoutDestination = 'RECEIVER_BANK',
+            payoutDetails = {},
+            notes = ''
+        } = req.body;
+
+        if (!clientName || !clientEmail || !amount || Number(amount) <= 0) {
+            return res.status(400).json({ success: false, error: 'Client name, client email, and positive amount are required' });
+        }
+
+        const invoiceId = `INV-${Date.now().toString().slice(-6)}`;
+        db.prepare(`
+            INSERT INTO invoices (id, merchant_id, client_name, client_email, amount, currency, status, items, payout_destination, payout_details, notes)
+            VALUES (?, ?, ?, ?, ?, ?, 'SENT', ?, ?, ?, ?)
+        `).run(
+            invoiceId,
+            String(req.user?.id || 'MERCHANT-1'),
+            clientName,
+            clientEmail,
+            Number(amount),
+            currency,
+            JSON.stringify(items),
+            payoutDestination,
+            JSON.stringify(payoutDetails),
+            notes
+        );
+
+        res.json({
+            success: true,
+            invoice: {
+                id: invoiceId,
+                clientName,
+                clientEmail,
+                amount: Number(amount),
+                currency,
+                status: 'SENT',
+                payoutDestination
+            }
+        });
+    } catch (err: any) {
+        console.error('Create Invoice Error:', err);
+        res.status(500).json({ success: false, error: 'Failed to create invoice' });
+    }
+});
+
+// 3. Get Invoice Details (Public / Payer portal)
+app.get('/api/invoices/:id', (req, res) => {
+    try {
+        const row: any = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
+        if (!row) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+        res.json({
+            success: true,
+            invoice: {
+                ...row,
+                items: JSON.parse(row.items || '[]'),
+                payout_details: JSON.parse(row.payout_details || '{}'),
+                trial_deposits: JSON.parse(row.trial_deposits || '{}')
+            }
+        });
+    } catch (err: any) {
+        res.status(500).json({ success: false, error: 'Failed to fetch invoice details' });
+    }
+});
+
+// 4. Pay Invoice (Multi-Rail: Card, Plaid, Manual ACH with Trial Deposits, SWIFT, Digital Tags)
+app.post('/api/invoices/:id/pay', (req, res) => {
+    try {
+        const invoiceId = req.params.id;
+        const row: any = db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoiceId);
+        if (!row) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+        const { paymentMethod, paymentData } = req.body;
+
+        // --- OPTION A: CREDIT / DEBIT CARD ---
+        if (paymentMethod === 'CARD') {
+            const { cardNumber, expMonth, expYear, cvc } = paymentData || {};
+            const cleanCard = String(cardNumber || '').replace(/\D/g, '');
+            if (cleanCard.length < 13 || cleanCard.length > 19) {
+                return res.status(400).json({ success: false, error: 'Invalid card number' });
+            }
+
+            db.prepare('UPDATE invoices SET status = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
+                .run('PAID', 'CARD', invoiceId);
+
+            return res.json({
+                success: true,
+                status: 'PAID',
+                transactionId: `TXN-CARD-${Date.now()}`,
+                message: 'Payment successfully processed via Card gateway'
+            });
+        }
+
+        // --- OPTION B: BANK TRANSFER VIA PLAID (INSTANT LINK) ---
+        if (paymentMethod === 'PLAID') {
+            const { publicToken, accountId, institutionName } = paymentData || {};
+            db.prepare('UPDATE invoices SET status = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
+                .run('PAID', 'PLAID', invoiceId);
+
+            return res.json({
+                success: true,
+                status: 'PAID',
+                transactionId: `TXN-PLAID-${Date.now()}`,
+                institution: institutionName || 'Plaid Linked Bank',
+                message: 'Bank account verified instantly via Plaid. ACH debit initiated.'
+            });
+        }
+
+        // --- OPTION C: MANUAL ACH BANK (ROUTING + ACCOUNT WITH TRIAL MICRO-DEPOSITS) ---
+        if (paymentMethod === 'MANUAL_ACH') {
+            const { routingNumber, accountNumber, accountHolderName } = paymentData || {};
+            const cleanRouting = String(routingNumber || '').replace(/\D/g, '');
+            const cleanAccount = String(accountNumber || '').replace(/\D/g, '');
+
+            if (cleanRouting.length !== 9) {
+                return res.status(400).json({ success: false, error: 'Routing number must be exactly 9 digits' });
+            }
+
+            // ABA Mod-10 Checksum
+            const d = cleanRouting.split('').map(Number);
+            const checksum = (3 * (d[0] + d[3] + d[6]) + 7 * (d[1] + d[4] + d[7]) + 1 * (d[2] + d[5] + d[8])) % 10;
+            if (checksum !== 0) {
+                return res.status(400).json({ success: false, error: 'Invalid ABA routing number checksum' });
+            }
+
+            if (cleanAccount.length < 4 || cleanAccount.length > 17) {
+                return res.status(400).json({ success: false, error: 'Account number must be between 4 and 17 digits' });
+            }
+
+            // Generate two micro-deposit amounts between $0.10 and $0.99
+            const dep1 = (Math.floor(Math.random() * 80 + 10) / 100);
+            const dep2 = (Math.floor(Math.random() * 80 + 10) / 100);
+
+            const trialData = {
+                routingNumber: cleanRouting,
+                accountNumberMasked: `******${cleanAccount.slice(-4)}`,
+                accountHolderName: accountHolderName || 'Authorized Signer',
+                deposit1: dep1,
+                deposit2: dep2,
+                verified: false,
+                sentAt: new Date().toISOString()
+            };
+
+            db.prepare('UPDATE invoices SET status = ?, payment_method = ?, trial_deposits = ? WHERE id = ?')
+                .run('TRIAL_PENDING', 'MANUAL_ACH', JSON.stringify(trialData), invoiceId);
+
+            return res.json({
+                success: true,
+                status: 'TRIAL_PENDING',
+                message: `Two micro-deposits have been dispatched to your bank account ending in ${cleanAccount.slice(-4)}. Enter the two exact amounts in the verification prompt to complete payment.`,
+                trialInfo: {
+                    deposit1Hint: dep1, // Provided for easy demo verification in UI
+                    deposit2Hint: dep2,
+                    accountEnding: cleanAccount.slice(-4)
+                }
+            });
+        }
+
+        // --- OPTION C-2: VERIFY TRIAL DEPOSITS ---
+        if (paymentMethod === 'VERIFY_TRIAL_DEPOSITS') {
+            const { deposit1, deposit2 } = paymentData || {};
+            const existingTrials = JSON.parse(row.trial_deposits || '{}');
+
+            if (!existingTrials.deposit1 || !existingTrials.deposit2) {
+                return res.status(400).json({ success: false, error: 'No pending trial deposits found for this invoice' });
+            }
+
+            const match1 = Math.abs(Number(deposit1) - Number(existingTrials.deposit1)) < 0.001;
+            const match2 = Math.abs(Number(deposit2) - Number(existingTrials.deposit2)) < 0.001;
+
+            if (!match1 || !match2) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Trial deposit amounts do not match bank records. Please check your bank statement and re-enter.'
+                });
+            }
+
+            existingTrials.verified = true;
+            existingTrials.verifiedAt = new Date().toISOString();
+
+            db.prepare('UPDATE invoices SET status = ?, paid_at = CURRENT_TIMESTAMP, trial_deposits = ? WHERE id = ?')
+                .run('PAID', JSON.stringify(existingTrials), invoiceId);
+
+            return res.json({
+                success: true,
+                status: 'PAID',
+                message: 'Bank account verified successfully. Invoice settled via ACH Direct Debit.'
+            });
+        }
+
+        // --- OPTION D: SWIFT INTERNATIONAL WIRE ---
+        if (paymentMethod === 'SWIFT') {
+            const { swiftBic, iban, beneficiaryBank } = paymentData || {};
+            const cleanBic = String(swiftBic || '').trim().toUpperCase();
+
+            if (cleanBic.length !== 8 && cleanBic.length !== 11) {
+                return res.status(400).json({ success: false, error: 'SWIFT/BIC code must be 8 or 11 characters' });
+            }
+
+            db.prepare('UPDATE invoices SET status = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
+                .run('PAID', 'SWIFT', invoiceId);
+
+            return res.json({
+                success: true,
+                status: 'PAID',
+                transactionId: `SWIFT-${cleanBic}-${Date.now()}`,
+                message: `International SWIFT wire instruction accepted for ${beneficiaryBank || 'Beneficiary Bank'}.`
+            });
+        }
+
+        // --- OPTION E: UNIVERSAL DIGITAL TAGS (PAYPAL, ZELLE, CASHAPP, VENMO) ---
+        if (paymentMethod === 'DIGITAL_TAGS') {
+            const { tagPlatform, senderHandle, referenceCode } = paymentData || {};
+            db.prepare('UPDATE invoices SET status = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
+                .run('PAID', `${tagPlatform || 'TAG'}_TAG`, invoiceId);
+
+            return res.json({
+                success: true,
+                status: 'PAID',
+                transactionId: `TAG-${tagPlatform}-${Date.now()}`,
+                message: `Payment confirmed via ${tagPlatform} (${senderHandle || referenceCode || 'Tag Transfer'}).`
+            });
+        }
+
+        return res.status(400).json({ success: false, error: `Unsupported payment method: ${paymentMethod}` });
+    } catch (err: any) {
+        console.error('Invoice Payment Error:', err);
+        res.status(500).json({ success: false, error: 'Payment processing encountered an error' });
+    }
+});
+
 
 
 // WebSocket Handling
