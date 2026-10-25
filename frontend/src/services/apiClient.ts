@@ -100,11 +100,25 @@ export const apiClient = {
 
     // Invoicing & Merchant Payments
     async listInvoices() {
-        return this.get('/api/invoices');
+        try {
+            const res = await fetch(apiUrl('/api/invoices'), { headers: createAuthHeaders() });
+            return await res.json();
+        } catch (err: any) {
+            return { success: false, error: err.message };
+        }
     },
 
     async createInvoice(data: any) {
-        return this.post('/api/invoices', data);
+        try {
+            const res = await fetch(apiUrl('/api/invoices'), {
+                method: 'POST',
+                headers: createAuthHeaders(),
+                body: JSON.stringify(data)
+            });
+            return await res.json();
+        } catch (err: any) {
+            return { success: false, error: err.message };
+        }
     },
 
     async getInvoice(id: string) {
