@@ -210,16 +210,19 @@ export class CheckBackEngine {
     }
 
     private static addUnlockedSecurityBox(width: number, height: number, scale: number, objects: fabric.Object[]): void {
-        // The security box from the reference back: padlock certification
-        // line, the alteration warning, the feature list with descriptions,
-        // and the Reg. C.C. line - laid out as columns inside the frame
-        // (the box is presented rotated, like the sample's landscape form).
+        // The security box from the reference back, arranged as a precise
+        // table: one type size throughout, names bold, every feature pair
+        // on an exact 32-unit pitch with its description 12 units after
+        // the name, all columns centred on the box's midline, even
+        // margins to the frame. (The first pass had uneven pair gaps and
+        // mixed sizes, which read as unprofessional.)
         const boxLeft = 28 * scale;
         const boxTop = 26 * scale;
         const boxW = 205 * scale;
         const boxH = height - (52 * scale);
         const colY = boxTop + (boxH / 2);
         const col = (offset: number) => boxLeft + (offset * scale);
+        const BODY = 6.0;
 
         // Frame
         objects.push(new fabric.Rect({
@@ -229,12 +232,12 @@ export class CheckBackEngine {
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        const colText = (id: string, text: string, offset: number, fontSize: number, fontWeight: string, fill: string) => {
+        const colText = (id: string, text: string, offset: number, fontWeight: string, fill: string) => {
             objects.push(new fabric.Text(text, {
                 id,
                 left: col(offset),
                 top: colY,
-                fontSize: fontSize * scale,
+                fontSize: BODY * scale,
                 fontWeight,
                 fontFamily: 'Arial',
                 fill,
@@ -248,28 +251,28 @@ export class CheckBackEngine {
         // Padlock certification line + alteration warning
         colText('security-header',
             "Padlock design is a certification mark of the Check Payment Systems Association",
-            20, 6.5, 'normal', '#111');
+            20, 'normal', '#111');
         colText('security-warning',
             "Warning: Absence of the following Security Features may indicate alteration",
-            36, 6.5, 'bold', '#111');
+            36, 'bold', '#111');
 
-        // Feature list: name + description columns, as printed on the sample
+        // Feature list: name + description, exact pitch
         const features: Array<[string, string]> = [
-            ["MP Microprint", "Tiny type on front and back of document fills in to form solid lines when scanned or photocopied."],
+            ["MP Microprint", "Tiny type on front and back fills in to form solid lines when scanned or photocopied."],
             ["Security Pantograph", "Copy resistant security pantograph on front of document discourages clear duplication."],
             ["Warning Bands/MP Padlock Logos", "Warn receivers to be aware of detailed security features."],
-            ["Security Screen Backer", "\"Original Document\" text, and weave pattern visible on back of check, will not appear if scanned or photocopied."]
+            ["Security Screen Backer", "\"Original Document\" text and weave pattern on back, not visible if scanned or photocopied."]
         ];
         features.forEach(([name, desc], i) => {
-            const base = 52 + (i * 30);
-            colText(`security-feature-${i}`, name, base, 6.5, '600', '#111');
-            colText(`security-feature-desc-${i}`, desc, base + 13, 5.2, 'normal', '#222');
+            const nameOffset = 54 + (i * 32);
+            colText(`security-feature-${i}`, name, nameOffset, '600', '#111');
+            colText(`security-feature-desc-${i}`, desc, nameOffset + 12, 'normal', '#222');
         });
 
         // Reg. C.C. line (bottom of the box on the sample)
         colText('security-regcc',
             "* FEDERAL RESERVE BOARD OF GOVERNORS REG. C.C.",
-            178, 6, 'bold', '#111');
+            184, 'bold', '#111');
     }
 
 }
