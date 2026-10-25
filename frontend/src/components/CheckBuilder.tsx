@@ -835,33 +835,38 @@ const CheckBuilder: React.FC = () => {
     }, [checkStyle]);
 
     const getLayout = (style: string, W: number, H: number) => {
-        // Base template from counter check (works perfectly for 825x300)
+        // Standard check arrangement. The previous values were tuned for an
+        // 825x300 counter check and collided at the default 850x350 size:
+        // the bank block spans ~42px (name + 2-line address/routing), so the
+        // holder block at top 40 printed INTO it, the date row crossed the
+        // fractional routing, and memo/signature floated mid-check because
+        // they were fixed at 220 instead of anchored above the MICR band.
         const baseLayout = {
             checkNumber: { left: W - 100, top: 10 },
             fractionalRouting: { left: W - 100, top: 31 },
-            accHolder: { left: 40, top: 40 },
-            dateGroup: { left: W - 220, top: 40 },
-            amountGroup: { left: W - 150, top: 80 },
-            payTo: { left: 40, top: 110 },
-            writtenAmount: { left: 40, top: 150 },
-            bankDetails: { left: 40, top: 15 },
-            memoGroup: { left: 40, top: 220 },
-            signatureGroup: { left: W - 350, top: 220 }
+            bankDetails: { left: 40, top: 12 },
+            accHolder: { left: 40, top: 62 },
+            dateGroup: { left: W - 220, top: 64 },
+            amountGroup: { left: W - 150, top: 108 },
+            payTo: { left: 40, top: 116 },
+            writtenAmount: { left: 40, top: 154 },
+            memoGroup: { left: 40, top: H - 88 },
+            signatureGroup: { left: W - 350, top: H - 88 }
         };
 
         const layouts: any = {
             personal: { ...baseLayout },
             business: { ...baseLayout },
-            cashier: { ...baseLayout, signatureGroup2: { left: W - 350, top: 245 } },
-            payroll: { ...baseLayout, earningsGroup: { left: 40, top: 115 } },
-            payroll_classic: { ...baseLayout, payeeAddress: { left: 150, top: 160 } },
+            cashier: { ...baseLayout, signatureGroup2: { left: W - 350, top: H - 58 } },
+            payroll: { ...baseLayout, earningsGroup: { left: 40, top: 196 } },
+            payroll_classic: { ...baseLayout, payeeAddress: { left: 40, top: 198 } },
             payroll_karen: { ...baseLayout, payeeAddress: { left: 40, top: 200 }, earningsGroup: { left: 40, top: 350 } },
             echeck: { ...baseLayout },
             money_order: { ...baseLayout },
             certified: { ...baseLayout },
             counter: { ...baseLayout },
             bofa_classic: { ...baseLayout },
-            bofa_v2: { ...baseLayout, hologram: { left: W - 340, top: 210 } },
+            bofa_v2: { ...baseLayout, hologram: { left: W - 340, top: 186 } },
             us_treasury: { ...baseLayout }
         };
         return layouts[style] || baseLayout;
@@ -1030,7 +1035,7 @@ const CheckBuilder: React.FC = () => {
         const W = checkDimensions.width;
         // Dynamic Height for Full Page Payroll
         const isKarenCheck = checkStyle === 'payroll_karen' || selectedBank === 'KAREN_ART_STUDIO_PAYROLL';
-        const H = isKarenCheck ? 1000 : checkDimensions.height;
+        const H = isKarenCheck ? 900 : checkDimensions.height; // must match dynamicCanvasHeight (the real canvas height) or bottom-anchored elements render off-canvas
         const MICR_CLEAR_BAND = 65; // Strict compliance
         const textureBottom = showMicrBand ? H - MICR_CLEAR_BAND : H;
 
@@ -3336,11 +3341,11 @@ const CheckBuilder: React.FC = () => {
 
         // 3. Render Back of Check (using engine)
         const backFabricCanvas = new fabric.StaticCanvas(null, {
-            width: 900,
-            height: 300,
+            width: checkDimensions.width,
+            height: checkDimensions.height,
             backgroundColor: '#ffffff' // Ensure white paper background
         });
-        const backObjects = CheckBackEngine.generateCheckBack(900, 300, securityFeatures, 72, {
+        const backObjects = CheckBackEngine.generateCheckBack(checkDimensions.width, checkDimensions.height, securityFeatures, 72, {
             name: checkData.payeeName || checkData.accountHolderName,
             date: checkData.date,
             signatureFont: getHandwritingFont(signatureStyle),
@@ -4963,7 +4968,7 @@ const CheckBuilder: React.FC = () => {
                                     <svg width={checkDimensions.width} height={checkDimensions.height} style={{ position: 'absolute', top: 0, left: 0, zIndex: 10, pointerEvents: 'none' }}>
                                         <BorderlineEngine
                                             width={checkDimensions.width}
-                                            height={checkDimensions.height}
+                                            height={dynamicCanvasHeight}
                                             config={{
                                                 ...borderConfig,
                                                 color: borderConfig?.color || '#000',
