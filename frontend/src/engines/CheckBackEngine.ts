@@ -89,35 +89,29 @@ export class CheckBackEngine {
         const zoneWidth = 1.5 * 72 * scale;
         const zoneX = width - zoneWidth;
 
-        // Column order inside the strip, matching real check backs
-        // (owner's reference samples): divider | RESERVED | DO NOT WRITE |
-        // endorsement lines with the mobile-deposit column between them |
-        // ENDORSE HERE at the far edge. The lines run most of the height,
-        // the X sits at the top end of the first line, and the two notice
-        // texts are centred in their own columns - previously the X, the
-        // lines and the texts were placed independently and collided.
-        const colReserved = zoneX - (12 * scale);
-        const colWarning = zoneX + (16 * scale);
-        const line3X = zoneX + (34 * scale);
-        const line2X = zoneX + (50 * scale);
-        const colMobile = zoneX + (63 * scale);
-        const line1X = zoneX + (76 * scale);
-        const colHeader = width - (12 * scale);
-        const lineTop = 40 * scale;
-        const lineBottom = height - (24 * scale);
+        // OWNER'S CALCULATED GEOMETRY - restored exactly as originally
+        // designed. The three endorsement lines sit at zoneX + 30% of the
+        // zone, then +35 steps, running from y=60 to 55% of the height;
+        // the X, header, mobile column and notice columns interlock with
+        // those positions. Do not re-space: on a check, small placement
+        // errors are what get documents rejected.
+        // Only deviation from the original numbers: the two notice texts
+        // are vertically centred so their full length stays on the page
+        // (at the original 0.88/0.92 centre points they ran off the
+        // bottom edge). Their columns are the original ones.
 
         // --- Divider Line ---
         objects.push(new fabric.Line([zoneX, 0, zoneX, height], {
             id: 'endorse-divider', // UNIQUE ID
-            stroke: '#444', strokeWidth: 2.5 * scale,
+            stroke: '#999', strokeWidth: 1.2 * scale,
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // --- "ENDORSE HERE" Header (rightmost column, from the top) ---
+        // --- "ENDORSE HERE" Header ---
         objects.push(new fabric.Text("ENDORSE HERE", {
             id: 'endorse-header', // UNIQUE ID
-            left: colHeader,
-            top: 24 * scale,
+            left: width - (15 * scale),
+            top: 40 * scale,
             fontSize: 10 * scale,
             fontWeight: 'bold',
             fontFamily: 'Arial',
@@ -126,11 +120,12 @@ export class CheckBackEngine {
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // --- Signature X (top end of the first endorsement line) ---
+        // --- Signature X ---
+        const xPosX = zoneX + (zoneWidth * 0.3);
         objects.push(new fabric.Text("X", {
             id: 'endorse-x', // UNIQUE ID
-            left: line1X - (6 * scale),
-            top: 12 * scale,
+            left: xPosX - (15 * scale),
+            top: 60 * scale,
             fontSize: 16 * scale,
             fontFamily: 'Arial',
             fill: '#000',
@@ -138,21 +133,40 @@ export class CheckBackEngine {
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // --- 3 Endorsement Lines (long, evenly spaced across the strip) ---
-        [line3X, line2X, line1X].forEach((lx, i) => {
-            objects.push(new fabric.Line([lx, lineTop, lx, lineBottom], {
+        // --- 3 Endorsement Lines (the calculated spacing) ---
+        const lineStartTop = 60 * scale;
+        const lineEndTop = height * 0.55;
+
+        for (let i = 0; i < 3; i++) {
+            const lx = xPosX + (i * 35 * scale);
+            objects.push(new fabric.Line([lx, lineStartTop, lx, lineEndTop], {
                 id: `endorse-line-${i}`, // UNIQUE ID
                 stroke: '#ccc', strokeWidth: 1.5 * scale,
                 selectable: true, evented: true, hasControls: true
             } as any));
-        });
+        }
 
-        // --- Mobile Deposit (checkbox at the top of its column, text centred) ---
+        // --- Mobile Deposit Area ---
         if (style === 'mobile') {
+            const mobileY = height * 0.68;
+
+            objects.push(new fabric.Text("CHECK HERE IF MOBILE DEPOSIT", {
+                id: 'mobile-instruction', // UNIQUE ID
+                left: zoneX + (zoneWidth * 0.75),
+                top: mobileY,
+                fontSize: 7 * scale,
+                fontWeight: 'bold',
+                fontFamily: 'Arial',
+                fill: '#222',
+                angle: 90,
+                originX: 'center',
+                selectable: true, evented: true, hasControls: true
+            } as any));
+
             objects.push(new fabric.Rect({
                 id: 'mobile-checkbox', // UNIQUE ID
-                left: colMobile - (8 * scale),
-                top: 48 * scale,
+                left: zoneX + (zoneWidth * 0.85),
+                top: mobileY,
                 width: 16 * scale,
                 height: 16 * scale,
                 fill: 'transparent',
@@ -163,48 +177,34 @@ export class CheckBackEngine {
                 originY: 'center',
                 selectable: true, evented: true, hasControls: true
             } as any));
-
-            objects.push(new fabric.Text("CHECK HERE IF MOBILE DEPOSIT", {
-                id: 'mobile-instruction', // UNIQUE ID
-                left: colMobile,
-                top: height * 0.58,
-                fontSize: 7 * scale,
-                fontWeight: 'bold',
-                fontFamily: 'Arial',
-                fill: '#222',
-                angle: 90,
-                originX: 'center',
-                originY: 'center',
-                selectable: true, evented: true, hasControls: true
-            } as any));
         }
 
-        // --- Warning Text (own column left of the lines, centred) ---
+        // --- Warning Text (original column; centred so it stays on-page) ---
         objects.push(new fabric.Text("DO NOT WRITE, STAMP OR SIGN BELOW THIS LINE", {
             id: 'endorse-warning', // UNIQUE ID
-            left: colWarning,
-            top: height / 2,
+            left: zoneX + (zoneWidth * 0.5),
+            top: height - (89 * scale),
             fontSize: 6 * scale,
             fontWeight: '800',
             fontFamily: 'Arial',
             fill: '#444',
             angle: 90,
             originX: 'center',
-                originY: 'center',
+            originY: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // --- Reserved Text (column beside the divider, centred) ---
+        // --- Reserved Text (original column; centred so it stays on-page) ---
         objects.push(new fabric.Text("RESERVED FOR FINANCIAL INSTITUTION USE*", {
             id: 'endorse-reserved', // UNIQUE ID
-            left: colReserved,
-            top: height / 2,
+            left: zoneX + (zoneWidth * 0.2),
+            top: height - (63 * scale),
             fontSize: 5 * scale,
             fontFamily: 'Arial',
             fill: '#888',
             angle: 90,
             originX: 'center',
-                originY: 'center',
+            originY: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
     }
