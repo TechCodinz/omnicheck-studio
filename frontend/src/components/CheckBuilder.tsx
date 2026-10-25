@@ -402,7 +402,7 @@ const getHandwritingFont = (style: string, fallback: string = 'Arial, sans-serif
 };
 
 // --- HELPER COMPONENT ---
-const CheckBack = forwardRef<{ getDataURL: () => string | null }, {
+const CheckBack = forwardRef<{ getDataURL: () => string | null; captureForExport: () => Promise<string | null> }, {
     securityFeatures: any[],
     paperColor: string,
     selectedBank: string,
@@ -433,6 +433,18 @@ const CheckBack = forwardRef<{ getDataURL: () => string | null }, {
                 return fabRef.current.toDataURL({ format: 'png', multiplier: 2 });
             }
             return null;
+        },
+        captureForExport: async () => {
+            const canvas = fabRef.current;
+            if (!canvas) return null;
+            // Force a full paint before capturing: on phones the back canvas
+            // can hold its objects without ever having painted (Page 2 not
+            // yet viewed), and a plain capture then returns a blank sheet -
+            // which is how front-only PDFs happened.
+            canvas.renderAll();
+            await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
+            canvas.renderAll();
+            return canvas.toDataURL({ format: 'png', multiplier: 4 });
         }
     }));
 
@@ -811,7 +823,7 @@ const CheckBuilder: React.FC = () => {
     const { isAuthenticated, openAuthModal } = useAuth();
     const [isExportingServerPdf, setIsExportingServerPdf] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const checkBackRef = useRef<{ getDataURL: () => string | null }>(null);
+    const checkBackRef = useRef<{ getDataURL: () => string | null; captureForExport: () => Promise<string | null> }>(null);
     const [fabricCanvas, setFabricCanvas] = useState<any | null>(null);
     const [borderConfig, setBorderConfig] = useState<BorderConfig>({
         style: 'BRAIDED',
@@ -3355,7 +3367,7 @@ const CheckBuilder: React.FC = () => {
         console.log("AI Design Generated:", result.meta.explanation);
     };
 
-    const handleDirectPrint = () => {
+    const handleDirectPrint = async () => {
         if (!fabricCanvas) return;
         // Same license gate as the PDF export
         if (!isPaid) {
@@ -3366,12 +3378,16 @@ const CheckBuilder: React.FC = () => {
             alert(`\u26a0\ufe0f You\'ve reached your ${currentPlan.name} plan limit (${currentPlan.checksPerMonth} exports/month).\n\nUpgrade to export more.`);
             return;
         }
+        const frontData = fabricCanvas.toDataURL({ format: 'png', multiplier: 4 });
+        const backData = await captureBackForExport();
+        if (!frontData || !backData || await isBlankCapture(backData)) {
+            alert('The back of the check could not be captured. Please view Page 2 once, then print again.');
+            return;
+        }
         if (!useCheckExport()) {
             alert('Print failed. Please check your plan status.');
             return;
         }
-        const frontData = fabricCanvas.toDataURL({ format: 'png', multiplier: 2 });
-        const backData = checkBackRef.current?.getDataURL();
         const iframe = document.createElement('iframe');
         iframe.style.position = 'fixed';
         iframe.style.right = '0';
@@ -3677,6 +3693,43 @@ const CheckBuilder: React.FC = () => {
         }
     };
 
+    // A real check back has many colors; an unpainted canvas is one flat color.
+    const isBlankCapture = (dataUrl: string): Promise<boolean> => new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const c = document.createElement('canvas');
+                c.width = 64; c.height = 24;
+                const ctx = c.getContext('2d');
+                if (!ctx) { resolve(false); return; }
+                ctx.drawImage(img, 0, 0, 64, 24);
+                const d = ctx.getImageData(0, 0, 64, 24).data;
+                const seen = new Set<string>();
+                for (let i = 0; i < d.length; i += 16) {
+                    seen.add(d[i] + ',' + d[i + 1] + ',' + d[i + 2]);
+                    if (seen.size > 4) break;
+                }
+                resolve(seen.size <= 4);
+            } catch { resolve(false); }
+        };
+        img.onerror = () => resolve(false);
+        img.src = dataUrl;
+    });
+
+    // Capture the back at print resolution; if it comes back blank (canvas
+    // never painted on this device), bring Page 2 into view, let it paint,
+    // and capture again.
+    const captureBackForExport = async (): Promise<string | null> => {
+        let data = await checkBackRef.current?.captureForExport() ?? null;
+        if (data && await isBlankCapture(data)) {
+            document.getElementById('oc-page-back')?.scrollIntoView({ block: 'center' });
+            await new Promise(r => setTimeout(r, 800));
+            data = await checkBackRef.current?.captureForExport() ?? null;
+            document.getElementById('oc-page-front')?.scrollIntoView({ block: 'start' });
+        }
+        return data;
+    };
+
     const handleDownloadPDF = async () => {
         if (!fabricCanvas) return;
 
@@ -3689,21 +3742,21 @@ const CheckBuilder: React.FC = () => {
             alert(`\u26a0\ufe0f You\'ve reached your ${currentPlan.name} plan limit (${currentPlan.checksPerMonth} exports/month).\n\nUpgrade to export more.`);
             return;
         }
-        // Consume one export credit
-        if (!useCheckExport()) {
-            alert('Export failed. Please check your plan status.');
-            return;
-        }
-
         try {
-            // 1. Capture Front (High DPI - 300+ DPI effective)
+            // 1. Capture Front (400 DPI at print size, lossless PNG)
             const frontData = fabricCanvas.toDataURL({ format: 'png', multiplier: 4 });
 
-            // 2. Capture Back
-            const backData = checkBackRef.current?.getDataURL();
+            // 2. Capture Back (same print resolution, blank-capture retry)
+            const backData = await captureBackForExport();
 
-            if (!frontData || !backData) {
-                alert('Error generating check images. Please try again.');
+            if (!frontData || !backData || await isBlankCapture(backData)) {
+                alert('The back of the check could not be captured. Please view Page 2 once, then export again.');
+                return;
+            }
+
+            // Consume one export credit (only once both sides are captured)
+            if (!useCheckExport()) {
+                alert('Export failed. Please check your plan status.');
                 return;
             }
 
@@ -5038,10 +5091,12 @@ const CheckBuilder: React.FC = () => {
                         <button style={toolBtnStyle} onClick={() => {
                             const container = document.querySelector('.canvas-wrapper-scroll');
                             if (container) container.scrollTop = 0;
+                            document.getElementById('oc-page-front')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }}>↑ Front</button>
                         <button style={toolBtnStyle} onClick={() => {
                             const container = document.querySelector('.canvas-wrapper-scroll');
-                            if (container) container.scrollTop = 1000;
+                            if (container) container.scrollTop = container.scrollHeight;
+                            document.getElementById('oc-page-back')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }}>↓ Back</button>
                         <span style={{ color: '#475569', margin: '0 2px', fontSize: '10px' }}>|</span>
                         <button style={toolBtnStyle} onClick={() => stepZoom(-1)}>−</button>
@@ -5095,7 +5150,7 @@ const CheckBuilder: React.FC = () => {
                         margin: '0 auto'
                     }}>
                         {/* FRONT SIDE WITH RULER */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0px' }}>
+                        <div id="oc-page-front" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0px' }}>
                             <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>
                                 PAGE 1 — FRONT SIDE
                             </div>
@@ -5166,7 +5221,7 @@ const CheckBuilder: React.FC = () => {
                         </div>
 
                         {/* BACK SIDE */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0px', marginLeft: '20px' }}>
+                        <div id="oc-page-back" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0px', marginLeft: '20px' }}>
                             <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>
                                 PAGE 2 — BACK SIDE
                             </div>
