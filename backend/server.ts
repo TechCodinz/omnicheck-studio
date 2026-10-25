@@ -322,8 +322,14 @@ app.post('/api/auth/register', rateLimitAuth, async (req, res) => {
         }
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const info = db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)').run(email, hashedPassword);
-        const user = { id: info.lastInsertRowid, email, role: 'user' };
+        // Admin bootstrap: the single email named by the ADMIN_EMAIL env var
+        // registers with the admin role. There is no admin password and no
+        // default credential anywhere in the system - admin is a role on a
+        // normal account, checked server-side by requireAdmin.
+        const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+        const role = adminEmail && email.toLowerCase() === adminEmail ? 'admin' : 'user';
+        const info = db.prepare('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)').run(email, hashedPassword, role);
+        const user = { id: info.lastInsertRowid, email, role };
         const token = generateToken(user);
 
         res.json({ success: true, token, user });
@@ -341,6 +347,11 @@ app.post('/api/auth/login', rateLimitAuth, async (req, res) => {
         const user: any = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 
         if (user && await bcrypt.compare(password, user.password_hash)) {
+            const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+            if (adminEmail && user.email.toLowerCase() === adminEmail && user.role !== 'admin') {
+                db.prepare('UPDATE users SET role = ? WHERE id = ?').run('admin', user.id);
+                user.role = 'admin';
+            }
             const token = generateToken({ id: user.id, email: user.email, role: user.role });
             res.json({ success: true, token, user: { id: user.id, email: user.email, role: user.role } });
         } else {

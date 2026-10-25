@@ -296,6 +296,7 @@ const generateBtnStyle: React.CSSProperties = {
 };
 
 const previewContainerStyle: React.CSSProperties = {
+    minWidth: 0,
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -3769,6 +3770,26 @@ const CheckBuilder: React.FC = () => {
 
     const dynamicCanvasHeight = (checkStyle === 'payroll_karen' || selectedBank === 'KAREN_ART_STUDIO_PAYROLL') ? 900 : checkDimensions.height;
 
+    // Mobile fit-to-width (<=920px): the canvas is a fixed-format surface
+    // (check width + ruler). Never let it exceed the viewport - scale it
+    // down and shrink its layout box to match, so the page itself never
+    // scrolls sideways and no blank scaled space is reserved.
+    const [mobileFit, setMobileFit] = useState<number | null>(null);
+    useEffect(() => {
+        const compute = () => {
+            if (window.innerWidth > 920) { setMobileFit(null); return; }
+            const contentW = checkDimensions.width + 20;
+            const avail = Math.max(260, window.innerWidth - 12);
+            setMobileFit(Math.min(zoom, avail / contentW));
+        };
+        compute();
+        window.addEventListener('resize', compute);
+        return () => window.removeEventListener('resize', compute);
+    }, [zoom, checkDimensions.width]);
+    const effectiveZoom = mobileFit ?? zoom;
+    const scaledLayoutW = mobileFit !== null ? Math.ceil((checkDimensions.width + 20) * effectiveZoom) : undefined;
+    const scaledLayoutH = mobileFit !== null ? Math.ceil((dynamicCanvasHeight + 60) * 2 * effectiveZoom + 16) : undefined;
+
     useEffect(() => {
         if (!canvasRef.current) return;
 
@@ -4736,7 +4757,7 @@ const CheckBuilder: React.FC = () => {
 
             {/* RIGHT SIDE - PREVIEW */}
             <div style={previewContainerStyle}>
-                <div style={{ ...previewHeaderStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', position: 'relative' }}>
+                <div className="oc-toolbar" style={{ ...previewHeaderStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ color: '#4CAF50', fontSize: '8px' }}>●</span>
                         <span style={{ color: '#E2E8F0', fontSize: '11px', fontWeight: '600' }}>
@@ -4822,7 +4843,7 @@ const CheckBuilder: React.FC = () => {
                     })()}
                 </div>
 
-                <div style={toolbarStyle}>
+                <div className="oc-toolbar" style={toolbarStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ fontSize: '9px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '1px' }}>Studio</span>
                         <span style={{ color: '#475569', margin: '0 4px', fontSize: '10px' }}>|</span>
@@ -4870,7 +4891,10 @@ const CheckBuilder: React.FC = () => {
 
                 <div className="canvas-wrapper-scroll" style={{ ...canvasWrapperStyle, overflowY: 'auto', maxHeight: 'calc(100vh - 120px)', paddingBottom: '120px' }}>
                     <div style={{
-                        transform: `scale(${zoom})`,
+                        transform: `scale(${effectiveZoom})`,
+                        width: scaledLayoutW ? `${scaledLayoutW}px` : undefined,
+                        height: scaledLayoutH ? `${scaledLayoutH}px` : undefined,
+                        flex: 'none',
                         transformOrigin: 'top left',
                         display: 'flex',
                         flexDirection: 'column',
@@ -4985,6 +5009,7 @@ const CheckBuilder: React.FC = () => {
                 </div>
                 {/* FLOATING AI COMMAND BAR (Phase 74 - Draggable) */}
                 <div
+                    className="oc-aibar"
                     onMouseDown={(e) => {
                         // Only start drag if clicking on the container or icon, not inputs
                         if ((e.target as HTMLElement).tagName !== 'INPUT') {

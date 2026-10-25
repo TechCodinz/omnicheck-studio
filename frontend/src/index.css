@@ -532,3 +532,14 @@ img, video, canvas, svg, iframe { max-width: 100%; }
   .oc-builder-panel > div { max-height: none !important; }
   .canvas-wrapper-scroll { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; padding-bottom: 32px !important; }
 }
+
+
+/* Studio mobile refinements (CheckBuilder) */
+.oc-toolbar { }
+.oc-aibar { }
+@media (max-width: 920px) {
+  .oc-toolbar { flex-wrap: wrap !important; row-gap: 8px !important; }
+  /* The floating AI bar starts centred for a desktop window
+     (left = innerWidth/2 - 300), which is off-screen on phones */
+  .oc-aibar { left: 12px !important; right: 12px; width: auto !important; max-width: none !important; }
+}
