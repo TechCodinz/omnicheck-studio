@@ -25,6 +25,7 @@ import { LicenseProvider, useLicense } from './contexts/LicenseContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthModal from './components/AuthModal';
 import MobileDepositCapture from './components/MobileDepositCapture';
+import IdentityVerification from './components/IdentityVerification';
 import MerchantInvoicingEngine from './components/MerchantInvoicingEngine';
 
 interface NavItem {
@@ -87,6 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobile = false, 
     { path: '/document-editor', icon: <FiEdit3 size={18} />, label: 'Document Editor' },
     { path: '/tax-documents', icon: <FiClipboard size={18} />, label: 'Tax Documents', badge: 'NEW', badgeColor: 'bg-success-500/20 text-success-400' },
     { path: '/mobile-deposit', icon: <FiSmartphone size={18} />, label: 'Mobile Deposit' },
+    { path: '/verify-identity', icon: <FiShield size={18} />, label: 'ID Verification', badge: 'KYC', badgeColor: 'bg-primary-500/20 text-primary-400' },
     { path: '/invoicing', icon: <FiCreditCard size={18} />, label: 'Invoicing', badge: 'PAY', badgeColor: 'bg-warning-500/20 text-warning-400' },
     { path: '/pricing', icon: <FiDollarSign size={18} />, label: 'Pricing', badge: !isPaid ? 'FREE' : null, badgeColor: 'bg-surface-500/50 text-surface-300' },
     { path: '/payments', icon: <FiCreditCard size={18} />, label: 'Payments' },
@@ -351,6 +353,7 @@ const AppContent: React.FC = () => {
             <Route path="/document-editor" element={<GlobalDocumentEditor />} />
             <Route path="/tax-documents" element={<TaxDocumentEditor />} />
             <Route path="/mobile-deposit" element={<MobileDepositCapture />} />
+            <Route path="/verify-identity" element={<IdentityVerification />} />
             <Route path="/invoicing" element={<MerchantInvoicingEngine />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/payments" element={<CryptoPaymentPanel amountUSD={100} orderId="demo-order" />} />
