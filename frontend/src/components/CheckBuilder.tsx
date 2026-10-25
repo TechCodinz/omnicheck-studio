@@ -3350,7 +3350,7 @@ const CheckBuilder: React.FC = () => {
         } else {
             setCheckData(prev => ({ ...prev, isAiActive: true }));
         }
-        setAiFeedback(result.meta.explanation || 'Design updated.');
+        setAiFeedback((result.meta.explanation || 'Design updated.').replace(/\*\*/g, ''));
         window.setTimeout(() => setAiFeedback(''), 9000);
         console.log("AI Design Generated:", result.meta.explanation);
     };
@@ -3400,9 +3400,11 @@ const CheckBuilder: React.FC = () => {
 
     const handleEmailToPayee = () => {
         const amount = Number(checkData.amount || 0).toFixed(2);
-        const subject = encodeURIComponent(`Check #${checkData.checkNumber} - $${amount}`);
-        const body = encodeURIComponent(`Hello ${checkData.payeeName || 'Payee'},\n\nA check has been prepared for you:\n\nCheck #: ${checkData.checkNumber}\nAmount: $${amount}\nDate: ${checkData.date}\nBank: ${checkData.bankName}\n\n(Attach the exported check PDF or image to this email before sending.)`);
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        const subjectText = `Check #${checkData.checkNumber} - $${amount}`;
+        const bodyText = `Hello ${checkData.payeeName || 'Payee'},\n\nA check has been prepared for you:\n\nCheck #: ${checkData.checkNumber}\nAmount: $${amount}\nDate: ${checkData.date}\nBank: ${checkData.bankName}\n\n(Attach the exported check PDF or image to this email before sending.)`;
+        try { navigator.clipboard?.writeText(`Subject: ${subjectText}\n\n${bodyText}`); } catch (err) { /* clipboard unavailable */ }
+        window.location.href = `mailto:?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+        window.setTimeout(() => alert('Your email app should now open with the check details pre-filled.\n\nIf nothing opened, the same draft was copied to your clipboard - paste it into any email.'), 400);
     };
 
     const handleAddText = () => {
