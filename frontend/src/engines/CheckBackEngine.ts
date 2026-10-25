@@ -1,13 +1,23 @@
 import { fabric } from 'fabric';
 
 /**
- * CheckBackEngine - v40 Draggable Fix & Styles
- * 
- * Changes:
- * - Added unique 'id' to EVERY fabric object for persistence.
- * - Implemented 'style' logic:
- *   - 'mobile': Checkbox + Instruction Text
- *   - 'business' / 'standard': Clean endorsement area
+ * CheckBackEngine - standard bank check back layout
+ *
+ * Arranged the way real check backs are printed (the previous design was
+ * built sideways - a vertical endorsement strip down the right edge with
+ * every text rotated 90 degrees, and a background panel that did not
+ * cover the full page):
+ * - Full-page background.
+ * - Endorsement band across the TOP: "ENDORSE HERE", the X mark and three
+ *   horizontal endorsement lines, with the mobile-deposit checkbox and
+ *   instruction to the right of the lines.
+ * - A divider line under the band with "DO NOT WRITE, SIGN OR STAMP BELOW
+ *   THIS LINE", then "RESERVED FOR FINANCIAL INSTITUTION USE*" - the rest
+ *   of the page stays clear for bank stamps.
+ * - Security-features box, upright and readable, at the bottom-left.
+ * - Faint ORIGINAL / DOCUMENT watermark centred on the page, sized to fit.
+ * - Reg CC legal line along the bottom edge.
+ * Every object keeps a stable unique 'id' for position persistence.
  */
 export class CheckBackEngine {
     static generateCheckBack(width: number, height: number, config: any, scaleFactor: number, depositConfig?: any, signatureImage?: string | null): fabric.Object[] {
@@ -15,221 +25,216 @@ export class CheckBackEngine {
         const scale = scaleFactor / 72;
         const style = config.style || 'mobile'; // Default to mobile if not specified
 
-        // 0. Base Draggable Backgrounds (User can adjust split manually)
-        const endorsementX = width - (1.5 * 72 * scale);
+        const bandH = height * 0.44; // endorsement band across the top
 
-        // Left Panel (Main Security Body - Light Blue)
+        // 0. Backgrounds: one full-page panel (covers the whole back) plus a
+        // lighter tint over the endorsement band.
         objects.push(new fabric.Rect({
-            id: 'back-bg-left', // UNIQUE ID
+            id: 'back-bg-left',
             left: 0,
             top: 0,
-            width: endorsementX,
+            width: width,
             height: height,
             fill: '#e3f2fd',
             selectable: true, evented: true, hasControls: true, lockRotation: true
         } as any));
 
-        // Right Panel (Endorsement Zone - Clean White)
         objects.push(new fabric.Rect({
-            id: 'back-bg-right', // UNIQUE ID
-            left: endorsementX,
+            id: 'back-bg-right',
+            left: 0,
             top: 0,
-            width: width - endorsementX,
-            height: height,
+            width: width,
+            height: bandH,
             fill: '#ffffff',
+            opacity: 0.45,
             selectable: true, evented: true, hasControls: true, lockRotation: true
         } as any));
 
-        // 1. Watermark (Horizontal Center - Draggable, Big & Bold)
-        this.addHorizontalWatermark(width, height, scale, objects);
+        // 1. Watermark (centred, behind everything else)
+        this.addWatermark(width, height, objects);
 
-        // 2. Endorsement Zone (Right Side - All elements unlocked)
-        this.addUnlockedEndorsementZone(width, height, scale, objects, style, depositConfig, signatureImage);
+        // 2. Endorsement band (top)
+        this.addEndorsementBand(width, height, scale, bandH, objects, style);
 
-        // 3. Security Box (Left Side - All elements unlocked)
-        this.addUnlockedSecurityBox(width, height, scale, objects);
+        // 3. Divider + reserved area notices
+        this.addReservedArea(width, height, scale, bandH, objects);
 
-        // 4. Fed Reserve Text (Far Left - Draggable)
-        this.addUnlockedLegalText(width, height, scale, objects);
+        // 4. Security features box (bottom-left, upright)
+        this.addSecurityBox(width, height, scale, objects);
+
+        // 5. Legal line (bottom edge)
+        objects.push(new fabric.Text("FEDERAL RESERVE REG CC COMPLIANT", {
+            id: 'legal-text-compliance',
+            left: 36 * scale,
+            top: height - (14 * scale),
+            fontSize: 6 * scale,
+            fontWeight: 'bold',
+            fontFamily: 'Arial',
+            fill: '#999',
+            selectable: true, evented: true, hasControls: true
+        } as any));
 
         return objects;
     }
 
-    private static addHorizontalWatermark(width: number, height: number, scale: number, objects: fabric.Object[]): void {
+    private static addWatermark(width: number, height: number, objects: fabric.Object[]): void {
         const commonProps = {
             left: width / 2,
-            // Sized from the page width so the word fits INSIDE the paper
-            // (110px type + 50 spacing overflowed an 850px-wide check).
-            fontSize: Math.max(40, width * 0.1),
+            // Sized from the page width so each word fits INSIDE the paper.
+            fontSize: Math.max(38, width * 0.088),
             fontFamily: 'Arial Black, Arial',
             fontWeight: 900,
-            fill: 'rgba(180, 180, 180, 0.18)',
+            fill: 'rgba(180, 180, 180, 0.16)',
             originX: 'center',
             originY: 'center',
             selectable: true, evented: true, hasControls: true,
-            charSpacing: width * 0.028
+            charSpacing: width * 0.02
         };
 
         objects.push(new fabric.Text("ORIGINAL", {
             ...commonProps,
-            id: 'watermark-original', // UNIQUE ID
-            top: (height * 0.38)
+            id: 'watermark-original',
+            top: height * 0.40
         } as any));
 
         objects.push(new fabric.Text("DOCUMENT", {
             ...commonProps,
-            id: 'watermark-document', // UNIQUE ID
-            top: (height * 0.62)
+            id: 'watermark-document',
+            top: height * 0.60
         } as any));
     }
 
-    private static addUnlockedEndorsementZone(width: number, height: number, scale: number, objects: fabric.Object[], style: string, config?: any, signatureImage?: string | null): void {
-        const zoneWidth = 1.5 * 72 * scale;
-        const zoneX = width - zoneWidth;
+    private static addEndorsementBand(width: number, height: number, scale: number, bandH: number, objects: fabric.Object[], style: string): void {
+        const marginX = 36 * scale;
+        const lineStartX = 58 * scale;
+        const lineEndX = width * 0.60;
+        const firstLineY = 52 * scale;
+        const lineGap = 32 * scale;
 
-        // --- Divider Line ---
-        objects.push(new fabric.Line([zoneX, 0, zoneX, height], {
-            id: 'endorse-divider', // UNIQUE ID
-            stroke: '#999', strokeWidth: 1.2 * scale,
-            selectable: true, evented: true, hasControls: true
-        } as any));
-
-        // --- Endorsement Elements ---
-
-        // "ENDORSE HERE" Header - right-edge strip, clear of the lines
+        // "ENDORSE HERE" header
         objects.push(new fabric.Text("ENDORSE HERE", {
-            id: 'endorse-header', // UNIQUE ID
-            left: width - (13 * scale),
-            top: 30 * scale,
-            fontSize: 10 * scale,
+            id: 'endorse-header',
+            left: marginX,
+            top: 14 * scale,
+            fontSize: 11 * scale,
             fontWeight: 'bold',
             fontFamily: 'Arial',
             fill: '#333',
-            angle: 90,
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // Signature X
-        const xPosX = zoneX + (24 * scale);
+        // Signature X (sits just left of the first line)
         objects.push(new fabric.Text("X", {
-            id: 'endorse-x', // UNIQUE ID
-            left: zoneX + (10 * scale),
-            top: 55 * scale,
+            id: 'endorse-x',
+            left: marginX,
+            top: firstLineY - (8 * scale),
             fontSize: 16 * scale,
             fontFamily: 'Arial',
             fill: '#000',
-            angle: 90,
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // 3 Signature Lines - evenly spread across the zone (24/50/76 of 108)
-        const lineStartTop = 55 * scale;
-        const lineEndTop = height * 0.52;
-
+        // 3 horizontal endorsement lines
         for (let i = 0; i < 3; i++) {
-            const lx = xPosX + (i * 26 * scale);
-            objects.push(new fabric.Line([lx, lineStartTop, lx, lineEndTop], {
-                id: `endorse-line-${i}`, // UNIQUE ID
-                stroke: '#ccc', strokeWidth: 1.5 * scale,
+            const ly = firstLineY + (i * lineGap);
+            objects.push(new fabric.Line([lineStartX, ly, lineEndX, ly], {
+                id: `endorse-line-${i}`,
+                stroke: '#bbb',
+                strokeWidth: 1.5 * scale,
                 selectable: true, evented: true, hasControls: true
             } as any));
         }
 
-        // --- Mobile Deposit Area (Conditionally Rendered) ---
+        // Mobile deposit checkbox + instruction, right of the lines
         if (style === 'mobile') {
-            const mobileY = height * 0.68;
+            const cbX = width * 0.66;
+            const cbY = firstLineY - (8 * scale);
 
-            // Instruction: "CHECK HERE IF MOBILE DEPOSIT" - middle line's
-            // column, below where the signature lines end.
-            objects.push(new fabric.Text("CHECK HERE IF MOBILE DEPOSIT", {
-                id: 'mobile-instruction', // UNIQUE ID
-                left: zoneX + (50 * scale),
-                top: mobileY,
-                fontSize: 7 * scale,
-                fontWeight: 'bold',
-                fontFamily: 'Arial',
-                fill: '#222',
-                angle: 90,
-                originX: 'center',
-                selectable: true, evented: true, hasControls: true
-            } as any));
-
-            // Checkbox: Standard Square - third line's column, same row
             objects.push(new fabric.Rect({
-                id: 'mobile-checkbox', // UNIQUE ID
-                left: zoneX + (76 * scale),
-                top: mobileY,
+                id: 'mobile-checkbox',
+                left: cbX,
+                top: cbY,
                 width: 16 * scale,
                 height: 16 * scale,
                 fill: 'transparent',
                 stroke: '#222',
                 strokeWidth: 1.5 * scale,
-                angle: 90,
-                originX: 'center',
-                originY: 'center',
+                selectable: true, evented: true, hasControls: true
+            } as any));
+
+            objects.push(new fabric.Text("CHECK HERE IF MOBILE DEPOSIT", {
+                id: 'mobile-instruction',
+                left: cbX + (24 * scale),
+                top: cbY + (3 * scale),
+                fontSize: 8 * scale,
+                fontWeight: 'bold',
+                fontFamily: 'Arial',
+                fill: '#222',
                 selectable: true, evented: true, hasControls: true
             } as any));
         }
+    }
 
-        // Warning Text (Always present) - first line's column, below the
-        // lines; centered so its full rotated length stays on the page
-        // (at height*0.88 it ran ~37px off the bottom edge).
+    private static addReservedArea(width: number, height: number, scale: number, bandH: number, objects: fabric.Object[]): void {
+        const marginX = 36 * scale;
+
+        // Divider line under the endorsement band
+        objects.push(new fabric.Line([0, bandH, width, bandH], {
+            id: 'endorse-divider',
+            stroke: '#999',
+            strokeWidth: 1.2 * scale,
+            selectable: true, evented: true, hasControls: true
+        } as any));
+
         objects.push(new fabric.Text("DO NOT WRITE, SIGN OR STAMP BELOW THIS LINE", {
-            id: 'endorse-warning', // UNIQUE ID
-            left: zoneX + (24 * scale),
-            top: height * 0.76,
-            fontSize: 6 * scale,
+            id: 'endorse-warning',
+            left: marginX,
+            top: bandH + (9 * scale),
+            fontSize: 8 * scale,
             fontWeight: '800',
             fontFamily: 'Arial',
             fill: '#444',
-            angle: 90,
-            originX: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
 
         objects.push(new fabric.Text("RESERVED FOR FINANCIAL INSTITUTION USE*", {
-            id: 'endorse-reserved', // UNIQUE ID
-            left: width - (13 * scale),
-            top: height * 0.66,
-            fontSize: 5 * scale,
+            id: 'endorse-reserved',
+            left: marginX,
+            top: bandH + (25 * scale),
+            fontSize: 7 * scale,
             fontFamily: 'Arial',
             fill: '#888',
-            angle: 90,
-            originX: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
     }
 
-    private static addUnlockedSecurityBox(width: number, height: number, scale: number, objects: fabric.Object[]): void {
-        const boxLeft = 60 * scale;
-        const boxTop = 40 * scale;
-        const boxW = 120 * scale;
-        const boxH = height * 0.82;
+    private static addSecurityBox(width: number, height: number, scale: number, objects: fabric.Object[]): void {
+        const boxLeft = 36 * scale;
+        const boxW = width * 0.44;
+        const boxH = height * 0.32;
+        const boxTop = height - boxH - (24 * scale);
 
-        // Security Box Rect
+        // Frame
         objects.push(new fabric.Rect({
-            id: 'security-box-frame', // UNIQUE ID
+            id: 'security-box-frame',
             left: boxLeft, top: boxTop, width: boxW, height: boxH,
             fill: 'transparent', stroke: '#888', strokeWidth: 1.2 * scale,
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // "SECURITY FEATURES" Header
+        // Header
         objects.push(new fabric.Text("SECURITY FEATURES", {
-            id: 'security-header', // UNIQUE ID
-            left: boxLeft + (22 * scale),
-            top: height / 2,
+            id: 'security-header',
+            left: boxLeft + (10 * scale),
+            top: boxTop + (8 * scale),
             fontSize: 9 * scale,
             fontWeight: 'bold',
             fontFamily: 'Arial',
             fill: '#111',
-            angle: 90,
-            originX: 'center',
-            originY: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
 
-        // Refined detailed feature list
+        // Feature list: two upright columns of three
         const features = [
             "• AUTHENTIC DOCUMENT WATERMARK",
             "• ROUTING NUMBER VERIFICATION",
@@ -238,37 +243,23 @@ export class CheckBackEngine {
             "• CHEMICAL SENSITIVE PAPER STOCK",
             "• FLUORESCENT FIBER TECHNOLOGY"
         ];
+        const colGapX = boxW / 2;
+        const rowStartY = boxTop + (30 * scale);
+        const rowGap = 17 * scale;
 
         features.forEach((f, i) => {
+            const col = i < 3 ? 0 : 1;
+            const row = i % 3;
             objects.push(new fabric.Text(f, {
-                id: `security-feature-${i}`, // UNIQUE ID
-                left: boxLeft + (42 * scale) + (i * 13.5 * scale),
-                top: height / 2,
-                fontSize: 6.5 * scale,
+                id: `security-feature-${i}`,
+                left: boxLeft + (10 * scale) + (col * colGapX),
+                top: rowStartY + (row * rowGap),
+                fontSize: 7 * scale,
                 fontFamily: 'Arial',
                 fontWeight: '600',
                 fill: '#222',
-                angle: 90,
-                originX: 'center',
-                originY: 'center',
                 selectable: true, evented: true, hasControls: true
             } as any));
         });
-    }
-
-    private static addUnlockedLegalText(width: number, height: number, scale: number, objects: fabric.Object[]): void {
-        objects.push(new fabric.Text("FEDERAL RESERVE REG CC COMPLIANT", {
-            id: 'legal-text-compliance', // UNIQUE ID
-            left: 15 * scale,
-            top: height / 2,
-            fontSize: 5 * scale,
-            fontWeight: 'bold',
-            fontFamily: 'Arial',
-            fill: '#999',
-            angle: 90,
-            originX: 'center',
-            originY: 'center',
-            selectable: true, evented: true, hasControls: true
-        } as any));
     }
 }
