@@ -56,16 +56,20 @@ export class CheckBackEngine {
     }
 
     private static addHorizontalWatermark(width: number, height: number, scale: number, objects: fabric.Object[]): void {
+        const endorsementX = width - (1.5 * 72 * scale);
         const commonProps = {
-            left: width / 2,
-            fontSize: 110 * scale,
+            // Centred over the blue panel (not the full page) and sized to
+            // fit inside it - at 110px DOCUMENT ran into the endorsement
+            // strip and off the right edge.
+            left: endorsementX / 2,
+            fontSize: Math.min(110 * scale, (endorsementX * 0.86) / 7.6),
             fontFamily: 'Arial Black, Arial',
             fontWeight: 900,
             fill: 'rgba(180, 180, 180, 0.18)',
             originX: 'center',
             originY: 'center',
             selectable: true, evented: true, hasControls: true,
-            charSpacing: 50
+            charSpacing: 22 * scale
         };
 
         objects.push(new fabric.Text("ORIGINAL", {
@@ -108,7 +112,7 @@ export class CheckBackEngine {
         } as any));
 
         // Signature X
-        const xPosX = zoneX + (zoneWidth * 0.3);
+        const xPosX = zoneX + (26 * scale);
         objects.push(new fabric.Text("X", {
             id: 'endorse-x', // UNIQUE ID
             left: xPosX - (15 * scale),
@@ -125,7 +129,7 @@ export class CheckBackEngine {
         const lineEndTop = height * 0.55;
 
         for (let i = 0; i < 3; i++) {
-            const lx = xPosX + (i * 35 * scale);
+            const lx = xPosX + (i * 26 * scale);
             objects.push(new fabric.Line([lx, lineStartTop, lx, lineEndTop], {
                 id: `endorse-line-${i}`, // UNIQUE ID
                 stroke: '#ccc', strokeWidth: 1.5 * scale,
@@ -140,7 +144,7 @@ export class CheckBackEngine {
             // Instruction: "CHECK HERE IF MOBILE DEPOSIT"
             objects.push(new fabric.Text("CHECK HERE IF MOBILE DEPOSIT", {
                 id: 'mobile-instruction', // UNIQUE ID
-                left: zoneX + (zoneWidth * 0.75),
+                left: zoneX + (39 * scale),
                 top: mobileY,
                 fontSize: 7 * scale,
                 fontWeight: 'bold',
@@ -154,7 +158,7 @@ export class CheckBackEngine {
             // Checkbox: Standard Square
             objects.push(new fabric.Rect({
                 id: 'mobile-checkbox', // UNIQUE ID
-                left: zoneX + (zoneWidth * 0.85),
+                left: zoneX + (65 * scale),
                 top: mobileY,
                 width: 16 * scale,
                 height: 16 * scale,
@@ -171,8 +175,8 @@ export class CheckBackEngine {
         // Warning Text (Always present)
         objects.push(new fabric.Text("DO NOT WRITE, SIGN OR STAMP BELOW THIS LINE", {
             id: 'endorse-warning', // UNIQUE ID
-            left: zoneX + (zoneWidth * 0.5),
-            top: height * 0.88,
+            left: width - (17 * scale),
+            top: height - (89 * scale),
             fontSize: 6 * scale,
             fontWeight: '800',
             fontFamily: 'Arial',
@@ -184,8 +188,8 @@ export class CheckBackEngine {
 
         objects.push(new fabric.Text("RESERVED FOR FINANCIAL INSTITUTION USE*", {
             id: 'endorse-reserved', // UNIQUE ID
-            left: zoneX + (zoneWidth * 0.2),
-            top: height * 0.92,
+            left: zoneX + (11 * scale),
+            top: height - (63 * scale),
             fontSize: 5 * scale,
             fontFamily: 'Arial',
             fill: '#888',
@@ -237,7 +241,7 @@ export class CheckBackEngine {
         features.forEach((f, i) => {
             objects.push(new fabric.Text(f, {
                 id: `security-feature-${i}`, // UNIQUE ID
-                left: boxLeft + (50 * scale) + (i * 15 * scale),
+                left: boxLeft + (44 * scale) + (i * 13 * scale),
                 top: height / 2,
                 fontSize: 6.5 * scale,
                 fontFamily: 'Arial',
