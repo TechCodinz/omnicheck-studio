@@ -565,3 +565,67 @@ img, video, canvas, svg, iframe { max-width: 100%; }
 @media (max-width: 560px) {
   .oc-gcards { grid-template-columns: 1fr !important; }
 }
+
+/* ============================================================
+   OmniCheck redesign layer — "Obsidian & Amber"
+   Ambient app background, glass surfaces, refined chrome.
+   Appended last so it composes with (never replaces) the
+   responsive rules above.
+   ============================================================ */
+body {
+  background-color: #07080d;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.oc-ambient {
+  position: relative;
+  background-color: #07080d;
+  isolation: isolate;
+}
+.oc-ambient::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(720px 420px at 12% -6%, rgba(249, 115, 22, 0.14), transparent 62%),
+    radial-gradient(860px 520px at 88% -12%, rgba(124, 58, 237, 0.10), transparent 60%),
+    radial-gradient(640px 480px at 55% 112%, rgba(249, 115, 22, 0.06), transparent 60%);
+  pointer-events: none;
+}
+.oc-ambient::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 78%);
+  pointer-events: none;
+}
+
+.oc-glass {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+}
+
+::selection {
+  background: rgba(249, 115, 22, 0.55);
+  color: #fff;
+}
+
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(249, 115, 22, 0.55); background-clip: content-box; }

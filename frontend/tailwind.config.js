@@ -51,7 +51,14 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        display: ['"Space Grotesk"', 'Inter', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+      },
+      boxShadow: {
+        'glow-amber': '0 8px 32px -6px rgba(249, 115, 22, 0.45)',
+        'glow-amber-sm': '0 4px 16px -2px rgba(249, 115, 22, 0.35)',
+        'panel': '0 24px 48px -12px rgba(0, 0, 0, 0.55)',
+        'float': '0 16px 40px -12px rgba(0, 0, 0, 0.6)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

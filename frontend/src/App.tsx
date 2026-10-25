@@ -96,27 +96,28 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobile = false, 
   ];
 
   const sidebarClasses = mobile
-    ? `fixed inset-y-0 left-0 z-[200] w-64 bg-surface-900 border-r border-white/10 transform transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`
-    : `fixed inset-y-0 left-0 z-[100] bg-surface-900 border-r border-white/10 transition-all duration-300 ease-out ${effCollapsed ? 'w-16' : 'w-56'}`;
+    ? `fixed left-3 top-3 bottom-3 z-[200] w-64 oc-glass rounded-[24px] shadow-float flex flex-col overflow-hidden transform transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-[115%]'}`
+    : `fixed left-3 top-3 bottom-3 z-[100] oc-glass rounded-[24px] shadow-float flex flex-col overflow-hidden transition-all duration-300 ease-out ${effCollapsed ? 'w-16' : 'w-56'}`;
 
   return (
     <aside className={sidebarClasses}>
-      <div className={`flex items-center gap-3 border-b border-white/10 ${effCollapsed ? 'px-3 py-4' : 'px-4 py-5'}`}>
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-lg shadow-lg shadow-primary-500/25 flex-shrink-0">
+      <div className={`flex items-center gap-3 ${effCollapsed ? 'px-3 py-4' : 'px-4 py-5'}`}>
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 via-primary-500 to-primary-700 flex items-center justify-center text-white text-lg shadow-glow-amber-sm ring-1 ring-white/25 flex-shrink-0">
           <FiShield size={20} />
         </div>
         {!effCollapsed && (
           <div className="min-w-0">
-            <div className="text-white font-bold text-sm tracking-tight">OmniCheck</div>
-            <div className="text-surface-500 text-[10px] font-medium uppercase tracking-wider">Studio</div>
+            <div className="text-white font-display font-bold text-[15px] tracking-tight leading-tight">OmniCheck</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] bg-gradient-to-r from-amber-400 to-primary-500 bg-clip-text text-transparent">Studio</div>
           </div>
         )}
       </div>
+      <div className="mx-4 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
 
       {!mobile && (
         <button
           onClick={onToggle}
-          className="absolute -right-3 top-[72px] w-6 h-6 rounded-full bg-surface-600 border-2 border-surface-900 text-white flex items-center justify-center text-[10px] hover:bg-primary-500 transition-colors z-10"
+          className="absolute -right-3 top-[76px] w-6 h-6 rounded-full bg-[#14161d] border border-white/15 shadow-float text-white flex items-center justify-center text-[10px] hover:bg-primary-500 transition-colors z-10"
           aria-label={effCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {effCollapsed ? <FiChevronRight size={12} /> : <FiChevronLeft size={12} />}
@@ -131,20 +132,20 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobile = false, 
               key={item.path}
               to={item.path}
               onClick={onNavigate}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group
-                ${isActive ? 'bg-primary-500/15 text-primary-400' : 'text-surface-400 hover:text-white hover:bg-white/5'}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-medium transition-all duration-200 group
+                ${isActive ? 'bg-gradient-to-r from-primary-500 to-amber-500 text-white shadow-glow-amber-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}
                 ${effCollapsed ? 'justify-center' : ''}
               `}
               title={effCollapsed ? item.label : undefined}
             >
-              <span className={`flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-surface-500 group-hover:text-white'} transition-colors`}>
+              <span className={`flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-white'} transition-colors`}>
                 {item.icon}
               </span>
               {!effCollapsed && (
                 <>
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.badge && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${item.badgeColor || 'bg-surface-600 text-surface-300'}`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-white/10 ${isActive ? 'bg-white/25 text-white' : (item.badgeColor || 'bg-surface-600 text-surface-300')}`}>
                       {item.badge}
                     </span>
                   )}
@@ -156,8 +157,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobile = false, 
       </nav>
 
       {!effCollapsed && (
-        <div className="p-3 border-t border-white/10">
-          <div className={`rounded-xl p-3 ${isPaid ? 'bg-gradient-to-br from-primary-500/10 to-primary-600/5 border border-primary-500/20' : 'bg-surface-800/50 border border-white/5'}`}>
+        <div className="p-3">
+          <div className={`rounded-2xl p-3.5 ${isPaid ? 'bg-gradient-to-br from-primary-500/20 via-primary-500/10 to-transparent border border-primary-500/30 shadow-glow-amber-sm' : 'oc-glass'}`}>
             <div className={`text-xs font-semibold mb-1 ${isPaid ? 'text-primary-400' : 'text-surface-400'}`}>
               {isPaid ? `${currentPlan.badge} Plan` : 'Free Plan'}
             </div>
@@ -170,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobile = false, 
               </div>
             )}
             {!isPaid && (
-              <Link to="/pricing" className="mt-2 block text-center text-[11px] font-bold py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:shadow-lg hover:shadow-primary-500/25 transition-all">
+              <Link to="/pricing" className="mt-2.5 block text-center text-[11px] font-bold py-2 bg-gradient-to-r from-primary-500 to-amber-500 text-white rounded-full shadow-glow-amber-sm hover:shadow-glow-amber transition-all">
                 Upgrade
               </Link>
             )}
@@ -193,18 +194,19 @@ const MobileBottomNav: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[150] bg-surface-900/95 backdrop-blur-xl border-t border-white/10">
-      <div className="flex items-center justify-around py-2">
+    <nav className="fixed bottom-3 left-3 right-3 z-[150] oc-glass rounded-[24px] shadow-float">
+      <div className="flex items-center justify-around py-2.5 px-1">
         {items.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${isActive ? 'text-primary-400' : 'text-surface-500'}`}
+              className={`relative flex flex-col items-center gap-0.5 px-3.5 py-1.5 rounded-2xl transition-all ${isActive ? 'text-primary-400 bg-primary-500/10' : 'text-slate-500'}`}
             >
               {item.icon}
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
+              {isActive && <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary-400 shadow-glow-amber-sm" />}
             </button>
           );
         })}
@@ -238,11 +240,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, onDeliveryClick }) => {
   const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : 'U';
 
   return (
-    <header className="sticky top-0 z-50 bg-surface-900/80 backdrop-blur-xl border-b border-white/[0.08]">
+    <header className="sticky top-3 z-50 mx-3 mt-3 oc-glass rounded-[22px] shadow-float">
       <div className={`flex items-center justify-between ${isMobile ? 'px-3 py-2.5 gap-3' : 'px-6 py-3 gap-4'}`}>
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {isMobile && (
-            <button onClick={onMenuClick} className="w-10 h-10 rounded-xl bg-surface-800 border border-white/10 text-white flex items-center justify-center hover:bg-surface-700 transition-colors flex-shrink-0" aria-label="Open menu">
+            <button onClick={onMenuClick} className="w-10 h-10 rounded-full oc-glass text-white flex items-center justify-center hover:border-primary-400/40 transition-colors flex-shrink-0" aria-label="Open menu">
               <FiMenu size={20} />
             </button>
           )}
@@ -254,7 +256,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, onDeliveryClick }) => {
               placeholder="Search checks, templates, payees..."
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
-              className="w-full pl-10 pr-10 py-2.5 bg-surface-800 border border-white/10 rounded-xl text-sm text-white placeholder-surface-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+              className="w-full pl-11 pr-10 py-2.5 bg-white/[0.04] border border-white/10 rounded-full text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-400/60 focus:ring-2 focus:ring-primary-500/25 focus:bg-white/[0.06] transition-all"
             />
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-surface-500 bg-surface-700/50 px-1.5 py-0.5 rounded border border-white/5 hidden sm:block">
               ⌘K
@@ -262,27 +264,27 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, onDeliveryClick }) => {
           </div>
 
           {!isMobile && (
-            <div className="hidden lg:flex items-center gap-2 text-xs font-semibold text-success-400 bg-success-500/10 border border-success-500/20 px-3 py-1.5 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-success-500 animate-pulse" />
+            <div className="hidden lg:flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 px-3 py-1.5 rounded-full shadow-[0_0_18px_-2px_rgba(16,185,129,0.45)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               API Online
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <button onClick={onDeliveryClick} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-primary-500/25 transition-all active:scale-95">
+          <button onClick={onDeliveryClick} className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary-500 to-amber-500 text-white text-sm font-semibold rounded-full shadow-glow-amber-sm hover:shadow-glow-amber transition-all active:scale-95">
             <FiSend size={16} />
             <span className="hidden md:inline">Send Check</span>
           </button>
 
-          <button className="relative w-10 h-10 rounded-xl bg-surface-800 border border-white/10 text-surface-400 flex items-center justify-center hover:text-white hover:bg-surface-700 transition-all">
+          <button className="relative w-10 h-10 rounded-full oc-glass text-slate-300 flex items-center justify-center hover:text-white hover:border-primary-400/40 transition-all">
             <FiBell size={18} />
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary-500 border-2 border-surface-900" />
+            <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-primary-500 shadow-glow-amber-sm" />
           </button>
 
           {isAuthenticated && user ? (
             <div className="relative" ref={userMenuRef}>
-              <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-2 bg-surface-800 border border-white/10 rounded-full pl-1 pr-3 py-1 hover:border-white/20 transition-all">
+              <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-2 oc-glass rounded-full pl-1 pr-3 py-1 hover:border-primary-400/40 transition-all">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${isAdmin ? 'bg-gradient-to-br from-purple-500 to-purple-700' : 'bg-gradient-to-br from-primary-500 to-primary-700'}`}>
                   {userInitial}
                 </div>
@@ -295,7 +297,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, onDeliveryClick }) => {
               </button>
 
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-surface-800 border border-white/10 rounded-xl shadow-xl shadow-black/50 py-2 animate-fadeIn z-50">
+                <div className="absolute right-0 mt-2 w-56 oc-glass bg-[#12141c]/85 rounded-2xl shadow-panel py-2 animate-fadeIn z-50">
                   <div className="px-4 py-3 border-b border-white/5">
                     <div className="text-white text-sm font-semibold truncate">{user.email}</div>
                     <div className="text-surface-500 text-xs">{isAdmin ? 'Administrator' : 'Standard User'}</div>
@@ -307,7 +309,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, onDeliveryClick }) => {
               )}
             </div>
           ) : (
-            <button onClick={() => openAuthModal('login')} className="flex items-center gap-2 px-4 py-2.5 bg-surface-700 border border-white/10 rounded-xl text-white text-sm font-semibold hover:bg-surface-600 transition-all">
+            <button onClick={() => openAuthModal('login')} className="flex items-center gap-2 px-5 py-2.5 oc-glass rounded-full text-white text-sm font-semibold hover:border-primary-400/50 hover:shadow-glow-amber-sm transition-all">
               <FiUser size={16} />
               <span className="hidden sm:inline">Sign In</span>
             </button>
@@ -329,10 +331,10 @@ const AppContent: React.FC = () => {
     setDeliveryModalOpen(false);
   }, []);
 
-  const sidebarWidth = isMobile ? 0 : (sidebarCollapsed ? 64 : 224);
+  const sidebarWidth = isMobile ? 0 : (sidebarCollapsed ? 92 : 252);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-surface-950 via-surface-900 to-surface-800">
+    <div className="min-h-screen oc-ambient font-sans">
       {isMobile && drawerOpen && (
         <div onClick={() => setDrawerOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] animate-fadeIn" />
       )}
@@ -342,7 +344,7 @@ const AppContent: React.FC = () => {
       <div className="transition-all duration-300 ease-out" style={{ marginLeft: sidebarWidth }}>
         <TopBar onMenuClick={() => setDrawerOpen(true)} onDeliveryClick={() => setDeliveryModalOpen(true)} />
 
-        <main className={`${isMobile ? 'pb-20 px-3 py-4' : 'px-6 py-6'} min-h-[calc(100vh-64px)]`}>
+        <main className={`${isMobile ? 'pb-28 px-3 py-4' : 'px-6 py-6'} min-h-[calc(100vh-64px)]`}>
           <Routes>
             <Route path="/" element={<CheckBuilder />} />
             <Route path="/documents" element={<DocumentTemplateGallery />} />
