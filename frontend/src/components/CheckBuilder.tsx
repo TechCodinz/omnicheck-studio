@@ -180,7 +180,7 @@ const containerStyle: React.CSSProperties = {
     display: 'flex',
     height: '100vh',
     width: '100vw',
-    backgroundColor: '#1a1d23',
+    backgroundColor: '#07080d',
     overflow: 'hidden',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
 };
@@ -188,11 +188,11 @@ const containerStyle: React.CSSProperties = {
 const sidebarStyle: React.CSSProperties = {
     width: '290px',
     minWidth: '290px',
-    background: '#FFFFFF',
-    borderRight: '1px solid #E2E8F0',
+    background: 'linear-gradient(180deg, #12141d 0%, #0b0d14 100%)',
+    borderRight: '1px solid rgba(255,255,255,0.08)',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '2px 0 16px rgba(0,0,0,0.08)',
+    boxShadow: '2px 0 24px rgba(0,0,0,0.45)',
     zIndex: 10
 };
 
@@ -202,12 +202,12 @@ const headerStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
+    background: 'linear-gradient(135deg, #F97316 0%, #EA580C 55%, #9A3412 100%)',
     color: 'white'
 };
 
 const sectionStyle: React.CSSProperties = {
-    borderBottom: '1px solid #F1F5F9'
+    borderBottom: '1px solid rgba(255,255,255,0.06)'
 };
 
 const sectionHeaderStyle: React.CSSProperties = {
@@ -216,10 +216,10 @@ const sectionHeaderStyle: React.CSSProperties = {
     justifyContent: 'space-between',
     alignItems: 'center',
     cursor: 'pointer',
-    backgroundColor: '#FAFBFC',
+    backgroundColor: 'rgba(255,255,255,0.02)',
     fontWeight: '600',
     fontSize: '12px',
-    color: '#334155',
+    color: '#E2E8F0',
     transition: 'all 0.2s ease',
     letterSpacing: '0.2px'
 };
@@ -232,7 +232,7 @@ const labelStyle: React.CSSProperties = {
     display: 'block',
     fontSize: '10px',
     fontWeight: '700',
-    color: '#1a237e',
+    color: '#FB923C',
     marginBottom: '5px',
     textTransform: 'uppercase',
     letterSpacing: '0.8px'
@@ -241,12 +241,12 @@ const labelStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '8px 10px',
-    borderRadius: '6px',
-    border: '1px solid #E2E8F0',
+    borderRadius: '10px',
+    border: '1px solid rgba(255,255,255,0.10)',
     fontSize: '12px',
     outline: 'none',
-    backgroundColor: '#FFFFFF',
-    color: '#1E293B',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    color: '#F1F5F9',
     transition: 'border-color 0.2s, box-shadow 0.2s',
     fontFamily: "'Inter', sans-serif"
 };
@@ -257,7 +257,7 @@ const checkboxStyle: React.CSSProperties = {
     gap: '8px',
     cursor: 'pointer',
     fontSize: '12px',
-    color: '#475569',
+    color: '#94A3B8',
     padding: '5px 0',
     transition: 'color 0.2s'
 };
@@ -265,10 +265,10 @@ const checkboxStyle: React.CSSProperties = {
 const actionBtnStyle: React.CSSProperties = {
     width: '100%',
     padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #E2E8F0',
-    background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-    color: '#334155',
+    borderRadius: '12px',
+    border: '1px solid rgba(255,255,255,0.10)',
+    background: 'rgba(255,255,255,0.04)',
+    color: '#E2E8F0',
     fontWeight: '600',
     fontSize: '12px',
     cursor: 'pointer',
@@ -284,11 +284,11 @@ const actionBtnStyle: React.CSSProperties = {
 
 const generateBtnStyle: React.CSSProperties = {
     ...actionBtnStyle,
-    background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
+    background: 'linear-gradient(135deg, #F97316 0%, #EA580C 55%, #9A3412 100%)',
     color: '#FFFFFF',
     border: 'none',
     marginTop: '12px',
-    boxShadow: '0 4px 14px rgba(26,35,126,0.3)',
+    boxShadow: '0 4px 18px rgba(249,115,22,0.40)',
     fontSize: '13px',
     fontWeight: '700',
     letterSpacing: '0.5px',
@@ -300,13 +300,13 @@ const previewContainerStyle: React.CSSProperties = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: '#1a1d23',
+    backgroundColor: '#07080d',
     overflow: 'hidden'
 };
 
 const previewHeaderStyle: React.CSSProperties = {
     padding: '8px 20px',
-    background: '#22252d',
+    background: 'rgba(255,255,255,0.02)',
     borderBottom: '1px solid rgba(255,255,255,0.06)',
     display: 'flex',
     justifyContent: 'space-between',
@@ -317,20 +317,20 @@ const toolbarStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    background: '#22252d',
+    background: 'rgba(255,255,255,0.02)',
     padding: '6px 16px',
     color: '#CBD5E1',
     borderBottom: '1px solid rgba(255,255,255,0.06)'
 };
 
 const toolBtnStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    color: '#94A3B8',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.09)',
+    color: '#CBD5E1',
     fontSize: '13px',
     cursor: 'pointer',
     padding: '5px 8px',
-    borderRadius: '4px',
+    borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3964,13 +3964,13 @@ const CheckBuilder: React.FC = () => {
                 <div style={headerStyle}>
                     <span style={{ fontSize: 20 }}>🏦</span>
                     <div>
-                        <div style={{ fontWeight: '800', fontSize: 15, letterSpacing: '-0.3px' }}>OmniCheck Pro</div>
+                        <div style={{ fontWeight: '700', fontSize: 15, letterSpacing: '-0.3px', fontFamily: "'Space Grotesk', sans-serif" }}>OmniCheck Pro</div>
                         <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px', fontWeight: '500' }}>Design Studio</div>
                     </div>
                 </div>
 
                 <div style={{ textAlign: 'right', marginBottom: 8, paddingRight: 6 }}>
-                    <span style={{ color: '#1a237e', fontSize: 10, cursor: 'pointer', fontWeight: '600' }}>💎 Marketplace</span>
+                    <span style={{ color: '#FB923C', fontSize: 10, cursor: 'pointer', fontWeight: '600' }}>💎 Marketplace</span>
                     <Link to="/admin" style={{ textDecoration: 'none' }}>
                         <span
                             style={{ color: isEnterprise ? '#10B981' : '#94A3B8', fontSize: 10, marginLeft: 8, cursor: 'pointer', fontWeight: isEnterprise ? '700' : '400' }}
@@ -4018,11 +4018,11 @@ const CheckBuilder: React.FC = () => {
                                                     ...dropdownItemStyle,
                                                     padding: '6px',
                                                     backgroundColor: checkStyle === s.id ? 'rgba(26,35,126,0.08)' : 'transparent',
-                                                    border: checkStyle === s.id ? '1px solid #1a237e' : '1px solid #E2E8F0',
+                                                    border: checkStyle === s.id ? '1px solid #F97316' : '1px solid rgba(255,255,255,0.12)',
                                                     justifyContent: 'center',
                                                     flexDirection: 'column',
                                                     gap: '3px',
-                                                    color: checkStyle === s.id ? '#1a237e' : '#64748B'
+                                                    color: checkStyle === s.id ? '#FB923C' : '#94A3B8'
                                                 }}
                                             >
                                                 <span style={{ fontSize: '18px' }}>{s.icon}</span>
@@ -4056,7 +4056,7 @@ const CheckBuilder: React.FC = () => {
                                                     height: '24px',
                                                     borderRadius: '50%',
                                                     backgroundColor: c.color,
-                                                    border: paperColor === c.id ? '2px solid #3498db' : '1px solid #ddd',
+                                                    border: paperColor === c.id ? '2px solid #F97316' : '1px solid rgba(255,255,255,0.12)',
                                                     cursor: 'pointer',
                                                     boxShadow: paperColor === c.id ? '0 0 5px rgba(52,152,219,0.5)' : 'none'
                                                 }}
@@ -4075,9 +4075,9 @@ const CheckBuilder: React.FC = () => {
                                                     ...dropdownItemStyle,
                                                     padding: '6px',
                                                     backgroundColor: selectedTexture === t.id ? 'rgba(26,35,126,0.08)' : 'transparent',
-                                                    border: selectedTexture === t.id ? '1px solid #1a237e' : '1px solid #E2E8F0',
+                                                    border: selectedTexture === t.id ? '1px solid #F97316' : '1px solid rgba(255,255,255,0.12)',
                                                     gap: '6px',
-                                                    color: selectedTexture === t.id ? '#1a237e' : '#64748B'
+                                                    color: selectedTexture === t.id ? '#FB923C' : '#94A3B8'
                                                 }}
                                             >
                                                 <span>{t.icon}</span>
@@ -4092,7 +4092,7 @@ const CheckBuilder: React.FC = () => {
                                         type="range" min="0" max="1" step="0.01"
                                         value={textureOpacity}
                                         onChange={(e) => setTextureOpacity(parseFloat(e.target.value))}
-                                        style={{ width: '100%', accentColor: '#3498db' }}
+                                        style={{ width: '100%', accentColor: '#F97316' }}
                                     />
                                     {/* AI UI Moved to Floating Bar */}
 
@@ -4127,7 +4127,7 @@ const CheckBuilder: React.FC = () => {
                                             </button>
                                         )}
                                     </div>
-                                    <p style={{ fontSize: '9px', color: '#666', marginTop: '4px' }}>Tip: Use transparent PNG for best results.</p>
+                                    <p style={{ fontSize: '9px', color: '#94A3B8', marginTop: '4px' }}>Tip: Use transparent PNG for best results.</p>
                                 </div>
 
                                 <div style={inputGroupStyle}>
@@ -4154,9 +4154,9 @@ const CheckBuilder: React.FC = () => {
                                             checked={(checkData as any).autoCleanSignature || false}
                                             onChange={(e) => setCheckData({ ...checkData, autoCleanSignature: e.target.checked } as any)}
                                         />
-                                        <span style={{ fontSize: '11px', color: '#666' }}>✨ Auto-Clean & Isolate Signature (Removes BG/Lines)</span>
+                                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>✨ Auto-Clean & Isolate Signature (Removes BG/Lines)</span>
                                     </div>
-                                    <p style={{ fontSize: '9px', color: '#666', marginTop: '4px' }}>Replaces simulated font signature. Draggable.</p>
+                                    <p style={{ fontSize: '9px', color: '#94A3B8', marginTop: '4px' }}>Replaces simulated font signature. Draggable.</p>
                                 </div>
                             </div>
                         )}
@@ -4181,7 +4181,7 @@ const CheckBuilder: React.FC = () => {
                                                 style={{
                                                     ...dropdownItemStyle,
                                                     padding: '8px',
-                                                    backgroundColor: signatureStyle === h.id ? '#eff6ff' : 'transparent',
+                                                    backgroundColor: signatureStyle === h.id ? 'rgba(249,115,22,0.10)' : 'transparent',
                                                     border: signatureStyle === h.id ? '1px solid #3b82f6' : '1px solid #e5e5e5',
                                                     gap: '8px'
                                                 }}
@@ -4191,7 +4191,7 @@ const CheckBuilder: React.FC = () => {
                                             </button>
                                         ))}
                                     </div>
-                                    <p style={{ fontSize: '9px', color: '#666', marginTop: '4px' }}>Simulates signer's unique hand.</p>
+                                    <p style={{ fontSize: '9px', color: '#94A3B8', marginTop: '4px' }}>Simulates signer's unique hand.</p>
                                 </div>
 
                                 <div style={inputGroupStyle}>
@@ -4216,8 +4216,8 @@ const CheckBuilder: React.FC = () => {
                                                 style={{
                                                     ...dropdownItemStyle,
                                                     padding: '8px',
-                                                    backgroundColor: handwritingStyle === h.id ? '#f0f4f8' : 'transparent',
-                                                    border: handwritingStyle === h.id ? '1px solid #3498db' : '1px solid transparent',
+                                                    backgroundColor: handwritingStyle === h.id ? 'rgba(249,115,22,0.10)' : 'transparent',
+                                                    border: handwritingStyle === h.id ? '1px solid #F97316' : '1px solid transparent',
                                                     gap: '8px'
                                                 }}
                                             >
@@ -4259,7 +4259,7 @@ const CheckBuilder: React.FC = () => {
                                                 style={{
                                                     width: '24px', height: '24px', borderRadius: '50%',
                                                     backgroundColor: ink.val,
-                                                    border: handwritingColor === ink.val ? '2px solid #3498db' : '1px solid #ddd',
+                                                    border: handwritingColor === ink.val ? '2px solid #F97316' : '1px solid rgba(255,255,255,0.12)',
                                                     cursor: 'pointer',
                                                     boxShadow: handwritingColor === ink.val ? '0 0 5px rgba(52,152,219,0.5)' : 'none'
                                                 }}
@@ -4274,7 +4274,7 @@ const CheckBuilder: React.FC = () => {
                                         type="range" min="12" max="32" step="1"
                                         value={checkData.payeeFontSize}
                                         onChange={(e) => handleInputChange('payeeFontSize', parseInt(e.target.value))}
-                                        style={{ width: '100%', accentColor: '#3498db' }}
+                                        style={{ width: '100%', accentColor: '#F97316' }}
                                     />
                                 </div>
                                 <div style={inputGroupStyle}>
@@ -4283,7 +4283,7 @@ const CheckBuilder: React.FC = () => {
                                         type="range" min="8" max="24" step="1"
                                         value={checkData.memoFontSize}
                                         onChange={(e) => handleInputChange('memoFontSize', parseInt(e.target.value))}
-                                        style={{ width: '100%', accentColor: '#3498db' }}
+                                        style={{ width: '100%', accentColor: '#F97316' }}
                                     />
                                 </div>
                                 <div style={inputGroupStyle}>
@@ -4292,7 +4292,7 @@ const CheckBuilder: React.FC = () => {
                                         type="range" min="-5" max="5" step="0.1"
                                         value={handwritingRotation}
                                         onChange={(e) => setHandwritingRotation(parseFloat(e.target.value))}
-                                        style={{ width: '100%', accentColor: '#3498db' }}
+                                        style={{ width: '100%', accentColor: '#F97316' }}
                                     />
                                 </div>
                             </div>
@@ -4437,8 +4437,8 @@ const CheckBuilder: React.FC = () => {
                                                     ...dropdownItemStyle,
                                                     padding: '8px',
                                                     fontSize: '11px',
-                                                    backgroundColor: backSideStyle === style.id ? '#f0f4f8' : '#fff',
-                                                    border: backSideStyle === style.id ? '1px solid #3498db' : '1px solid #eee',
+                                                    backgroundColor: backSideStyle === style.id ? 'rgba(249,115,22,0.10)' : 'rgba(255,255,255,0.03)',
+                                                    border: backSideStyle === style.id ? '1px solid #F97316' : '1px solid rgba(255,255,255,0.12)',
                                                     borderRadius: '6px',
                                                     display: 'flex',
                                                     flexDirection: 'column',
@@ -4473,7 +4473,7 @@ const CheckBuilder: React.FC = () => {
                                     />
                                     <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <input type="checkbox" checked={showMicrGuide} onChange={(e) => setShowMicrGuide(e.target.checked)} />
-                                        <span style={{ fontSize: '11px', color: '#666' }}>Show 5/8" MICR Clear Zone Guide</span>
+                                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>Show 5/8" MICR Clear Zone Guide</span>
                                     </div>
                                 </div>
                                 <div style={inputGroupStyle}>
@@ -4591,8 +4591,8 @@ const CheckBuilder: React.FC = () => {
                                                 style={{
                                                     ...dropdownItemStyle,
                                                     padding: '10px',
-                                                    backgroundColor: (checkData as any).micrFont === f.id ? '#f0f4f8' : 'transparent',
-                                                    border: (checkData as any).micrFont === f.id ? '1px solid #3498db' : '1px solid #eee',
+                                                    backgroundColor: (checkData as any).micrFont === f.id ? 'rgba(249,115,22,0.10)' : 'transparent',
+                                                    border: (checkData as any).micrFont === f.id ? '1px solid #F97316' : '1px solid rgba(255,255,255,0.12)',
                                                     justifyContent: 'flex-start',
                                                     fontWeight: (checkData as any).micrFont === f.id ? 'bold' : 'normal'
                                                 }}
@@ -4605,13 +4605,13 @@ const CheckBuilder: React.FC = () => {
                                 <div style={{ ...inputGroupStyle, marginTop: '15px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <label style={labelStyle}>MICR Font Size</label>
-                                        <span style={{ fontSize: '11px', color: '#3498db' }}>{(checkData as any).micrFontSize}px</span>
+                                        <span style={{ fontSize: '11px', color: '#FB923C' }}>{(checkData as any).micrFontSize}px</span>
                                     </div>
                                     <input
                                         type="range" min="16" max="32" step="0.5"
                                         value={(checkData as any).micrFontSize}
                                         onChange={(e) => setCheckData(prev => ({ ...prev, micrFontSize: parseFloat(e.target.value) }))}
-                                        style={{ width: '100%', accentColor: '#3498db' }}
+                                        style={{ width: '100%', accentColor: '#F97316' }}
                                     />
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#999', marginTop: '4px' }}>
                                         <span>Compact</span>
@@ -4636,7 +4636,7 @@ const CheckBuilder: React.FC = () => {
                                         Show Amount Box Border
                                     </label>
                                 </div>
-                                <div style={{ marginTop: '10px', padding: '10px', background: '#fff9e6', borderRadius: '8px', border: '1px solid #ffeeba', fontSize: '11px', color: '#856404' }}>
+                                <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(245,158,11,0.10)', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.35)', fontSize: '11px', color: '#FCD34D' }}>
                                     <strong>Note:</strong> Standard checks require 22px for OCR compatibility.
                                 </div>
                             </div>
@@ -4673,7 +4673,7 @@ const CheckBuilder: React.FC = () => {
                         </div>
                         {activeSection === 'borders' && (
                             <div style={{ padding: '15px' }}>
-                                <p style={{ fontSize: '11px', color: '#666', marginBottom: '12px' }}>
+                                <p style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '12px' }}>
                                     Select high-security border patterns for your check.
                                 </p>
                                 <UltimateCustomizationPanel
@@ -4688,11 +4688,11 @@ const CheckBuilder: React.FC = () => {
 
                 </div>
 
-                <div style={{ marginTop: 20, paddingTop: 15, borderTop: '1px solid #E2E8F0', position: 'relative' }}>
+                <div style={{ marginTop: 20, paddingTop: 15, borderTop: '1px solid rgba(255,255,255,0.12)', position: 'relative' }}>
 
                     <button
                         onClick={() => setShowExportMenu(!showExportMenu)}
-                        style={{ ...actionBtnStyle, justifyContent: 'space-between', background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)', color: '#FFFFFF', border: 'none', boxShadow: '0 2px 8px rgba(26,35,126,0.25)' }}
+                        style={{ ...actionBtnStyle, justifyContent: 'space-between', background: 'linear-gradient(135deg, #F97316 0%, #EA580C 55%, #9A3412 100%)', color: '#FFFFFF', border: 'none', boxShadow: '0 2px 8px rgba(26,35,126,0.25)' }}
                     >
                         <span>🚀 Premium Actions / Export</span>
                         <span>{showExportMenu ? '▲' : '▼'}</span>
@@ -4702,14 +4702,14 @@ const CheckBuilder: React.FC = () => {
                         showExportMenu && (
                             <div style={{
                                 position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 12,
-                                background: '#FFFFFF', boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-                                borderRadius: '10px', border: '1px solid #E2E8F0', zIndex: 100, padding: '6px'
+                                background: '#14161D', boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
+                                borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', zIndex: 100, padding: '6px'
                             }}>
-                                <div style={{ padding: '6px 10px', fontSize: 9, fontWeight: 700, color: '#1a237e', textTransform: 'uppercase', letterSpacing: 1.2 }}>Export Options</div>
+                                <div style={{ padding: '6px 10px', fontSize: 9, fontWeight: 700, color: '#FB923C', textTransform: 'uppercase', letterSpacing: 1.2 }}>Export Options</div>
 
                                 {/* Mobile Background Selector */}
-                                <div style={{ padding: '4px 12px 12px', borderBottom: '1px solid #eee', marginBottom: '8px' }}>
-                                    <div style={{ fontSize: '10px', color: '#666', marginBottom: '6px' }}>Mobile Shot Surface:</div>
+                                <div style={{ padding: '4px 12px 12px', borderBottom: '1px solid rgba(255,255,255,0.12)', marginBottom: '8px' }}>
+                                    <div style={{ fontSize: '10px', color: '#94A3B8', marginBottom: '6px' }}>Mobile Shot Surface:</div>
                                     <div style={{ display: 'flex', gap: '6px' }}>
                                         {[
                                             { id: 'dark', label: 'Dark', color: '#333' },
@@ -4722,10 +4722,10 @@ const CheckBuilder: React.FC = () => {
                                                 onClick={() => setMobileBackground(bg.id as any)}
                                                 style={{
                                                     flex: 1, padding: '4px', fontSize: '10px', borderRadius: '4px',
-                                                    border: mobileBackground === bg.id ? `2px solid ${bg.color}` : '1px solid #ddd',
-                                                    backgroundColor: mobileBackground === bg.id ? '#fff' : '#f9f9f9',
+                                                    border: mobileBackground === bg.id ? `2px solid ${bg.color}` : '1px solid rgba(255,255,255,0.12)',
+                                                    backgroundColor: mobileBackground === bg.id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
                                                     fontWeight: mobileBackground === bg.id ? 'bold' : 'normal',
-                                                    color: mobileBackground === bg.id ? '#000' : '#666',
+                                                    color: mobileBackground === bg.id ? '#FFFFFF' : '#94A3B8',
                                                     cursor: 'pointer'
                                                 }}
                                             >
@@ -4750,7 +4750,7 @@ const CheckBuilder: React.FC = () => {
                                 <button onClick={handleGenerateMobileShot} style={{ ...dropdownItemStyle, color: '#F97316', fontWeight: 600 }}>
                                     📸 Mobile Deposit Shot (Final)
                                 </button>
-                                <div style={{ height: 1, background: '#f0f0f0', margin: '8px 4px' }} />
+                                <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 4px' }} />
                                 <button onClick={handleSaveTemplate} style={{ ...dropdownItemStyle, color: '#2563EB', fontWeight: 600 }}>
                                     💾 Save Cloud Template
                                 </button>
@@ -5035,10 +5035,10 @@ const CheckBuilder: React.FC = () => {
                         top: aiBarPosition.y,
                         transform: 'none', // Removed centering transform
                         width: '90%', maxWidth: '600px',
-                        background: 'rgba(255, 255, 255, 0.95)',
+                        background: 'rgba(14, 16, 24, 0.92)',
                         backdropFilter: 'blur(10px)',
                         borderRadius: '16px',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.1)',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.10)',
                         padding: '10px 16px',
                         display: aiBarOpen ? 'flex' : 'none', alignItems: 'center', gap: '12px',
                         zIndex: 1000,
@@ -5100,16 +5100,16 @@ const CheckBuilder: React.FC = () => {
                             placeholder="Ask AI to design (e.g. 'Blue marble Chase business check')..."
                             style={{
                                 width: '100%', border: 'none', outline: 'none', background: 'transparent',
-                                fontSize: '14px', color: '#1a237e', fontWeight: 500
+                                fontSize: '14px', color: '#F1F5F9', fontWeight: 500
                             }}
                         />
                     </div>
 
-                    <div style={{ height: '24px', width: '1px', background: '#e0e0e0' }} />
+                    <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.12)' }} />
 
                     {/* Actions */}
                     <label title="Upload Logo/Reference" style={{ cursor: 'pointer', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#f3e5f5'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                         <input type="file" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'logo')} />
@@ -5125,7 +5125,7 @@ const CheckBuilder: React.FC = () => {
                             border: 'none', background: 'transparent', cursor: 'pointer', padding: '8px', borderRadius: '8px', fontSize: '18px', transition: 'background 0.2s',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#e3f2fd'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                         🔄

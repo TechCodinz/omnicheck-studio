@@ -132,7 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobile = false, 
               key={item.path}
               to={item.path}
               onClick={onNavigate}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-medium transition-all duration-200 group
+              className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 group
                 ${isActive ? 'bg-gradient-to-r from-primary-500 to-amber-500 text-white shadow-glow-amber-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}
                 ${effCollapsed ? 'justify-center' : ''}
               `}
