@@ -179,7 +179,7 @@ const HANDWRITING_STYLES = [
 const containerStyle: React.CSSProperties = {
     display: 'flex',
     height: '100vh',
-    width: '100vw',
+    width: '100%',
     backgroundColor: '#07080d',
     overflow: 'hidden',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
@@ -350,7 +350,7 @@ const zoomSelectStyle: React.CSSProperties = {
 
 const canvasWrapperStyle: React.CSSProperties = {
     flex: 1,
-    padding: '20px 0',
+    padding: '20px 28px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
