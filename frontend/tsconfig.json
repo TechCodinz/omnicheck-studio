@@ -19,7 +19,8 @@
         "isolatedModules": true,
         "noEmit": true,
         "jsx": "react-jsx",
-        "baseUrl": "src"
+        "baseUrl": "src",
+        "types": ["react", "react-dom", "fabric", "jszip", "socket.io-client", "three", "node"]
     },
     "include": [
         "src"
