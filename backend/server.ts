@@ -322,12 +322,12 @@ app.post('/api/auth/register', rateLimitAuth, async (req, res) => {
         }
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Admin bootstrap: the single email named by the ADMIN_EMAIL env var
-        // registers with the admin role. There is no admin password and no
-        // default credential anywhere in the system - admin is a role on a
-        // normal account, checked server-side by requireAdmin.
-        const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-        const role = adminEmail && email.toLowerCase() === adminEmail ? 'admin' : 'user';
+        // Admin bootstrap: emails named by the ADMIN_EMAIL env var (comma-
+        // separated) register with the admin role. There is no admin password
+        // and no default credential anywhere in the system - admin is a role
+        // on a normal account, checked server-side by requireAdmin.
+        const adminEmails = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+        const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
         const info = db.prepare('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)').run(email, hashedPassword, role);
         const user = { id: info.lastInsertRowid, email, role };
         const token = generateToken(user);
@@ -347,8 +347,8 @@ app.post('/api/auth/login', rateLimitAuth, async (req, res) => {
         const user: any = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 
         if (user && await bcrypt.compare(password, user.password_hash)) {
-            const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-            if (adminEmail && user.email.toLowerCase() === adminEmail && user.role !== 'admin') {
+            const adminEmails = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+            if (adminEmails.includes(user.email.toLowerCase()) && user.role !== 'admin') {
                 db.prepare('UPDATE users SET role = ? WHERE id = ?').run('admin', user.id);
                 user.role = 'admin';
             }
