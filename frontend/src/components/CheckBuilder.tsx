@@ -956,6 +956,10 @@ const CheckBuilder: React.FC = () => {
 
     // AI Bar Draggability State
     const [aiBarPosition, setAiBarPosition] = useState({ x: window.innerWidth / 2 - 300, y: window.innerHeight - 80 });
+    // The bar is click-to-open: it must never sit over the check design
+    // (on phones it covered Page 2 while scrolling). Starts open on wide
+    // screens, closed on phones.
+    const [aiBarOpen, setAiBarOpen] = useState(() => window.innerWidth > 920);
     const [isDraggingAiBar, setIsDraggingAiBar] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
@@ -4997,7 +5001,7 @@ const CheckBuilder: React.FC = () => {
                                     paperColor={paperColor}
                                     selectedBank={selectedBank}
                                     width={checkDimensions.width}
-                                    height={checkDimensions.height}
+                                    height={dynamicCanvasHeight}
                                     checkData={checkData}
                                     handwritingColor={handwritingColor}
                                     signatureStyle={signatureStyle}
@@ -5036,7 +5040,7 @@ const CheckBuilder: React.FC = () => {
                         borderRadius: '16px',
                         boxShadow: '0 20px 50px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.1)',
                         padding: '10px 16px',
-                        display: 'flex', alignItems: 'center', gap: '12px',
+                        display: aiBarOpen ? 'flex' : 'none', alignItems: 'center', gap: '12px',
                         zIndex: 1000,
                         transition: isDraggingAiBar ? 'none' : 'all 0.3s ease', // Disable transition during drag for smoothness
                         cursor: isDraggingAiBar ? 'grabbing' : 'grab'
@@ -5178,7 +5182,38 @@ const CheckBuilder: React.FC = () => {
                     >
                         ✨ Go
                     </button>
+
+                    <button
+                        title="Close AI bar"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => setAiBarOpen(false)}
+                        style={{
+                            border: 'none', background: 'transparent', cursor: 'pointer', padding: '8px', borderRadius: '8px', fontSize: '15px', color: '#666',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                        }}
+                    >
+                        ✕
+                    </button>
                 </div>
+
+                {/* AI BAR LAUNCHER - shown only when the bar is closed, so the
+                    design stays fully visible while scrolling; tap to open. */}
+                {!aiBarOpen && (
+                    <button
+                        className="oc-aibar"
+                        onClick={() => setAiBarOpen(true)}
+                        style={{
+                            position: 'fixed', right: '16px', bottom: '20px', zIndex: 1000,
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            background: 'linear-gradient(135deg, #7b1fa2, #4a148c)', color: 'white',
+                            border: 'none', borderRadius: '999px', padding: '12px 18px',
+                            fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                            boxShadow: '0 10px 30px rgba(74, 20, 140, 0.45)'
+                        }}
+                    >
+                        ✨ Ask AI
+                    </button>
+                )}
             </div>
 
             {/* Signature Lab Modal */}
