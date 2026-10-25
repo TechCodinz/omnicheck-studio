@@ -910,6 +910,7 @@ const CheckBuilder: React.FC = () => {
     const [signatureImage, setSignatureImage] = useState<string | null>(null);
     const [rawSignatureImage, setRawSignatureImage] = useState<string | null>(null);
     const [isSignatureLabOpen, setIsSignatureLabOpen] = useState(false);
+    const [customObjects, setCustomObjects] = useState<Array<{ id: string; kind: 'text' | 'image'; text?: string; src?: string; left?: number; top?: number }>>([]);
 
     const [showMicrGuide, setShowMicrGuide] = useState(false);
     const [showComplianceDetails, setShowComplianceDetails] = useState(false);
@@ -3170,6 +3171,48 @@ const CheckBuilder: React.FC = () => {
                 });
             }
 
+            // 25a. USER OBJECTS (Add Text / Attachments toolbar tools)
+            customObjects.forEach(item => {
+                const saved = objectPositionsRef.current[item.id];
+                if (item.kind === 'text') {
+                    const t = new fabric.IText(item.text || 'New Text', {
+                        id: item.id,
+                        left: saved?.left ?? item.left ?? 110,
+                        top: saved?.top ?? item.top ?? 110,
+                        fontSize: 16,
+                        fontFamily: 'Arial, sans-serif',
+                        fill: '#1a3a5c',
+                        selectable: true,
+                        hasControls: true
+                    } as any);
+                    if (saved) {
+                        t.scaleX = saved.scaleX ?? 1;
+                        t.scaleY = saved.scaleY ?? 1;
+                        t.angle = saved.angle ?? 0;
+                    }
+                    c.add(t);
+                } else if (item.kind === 'image' && item.src) {
+                    fabric.Image.fromURL(item.src, (img) => {
+                        img.set({
+                            id: item.id,
+                            left: saved?.left ?? item.left ?? 90,
+                            top: saved?.top ?? item.top ?? 90,
+                            selectable: true,
+                            hasControls: true
+                        } as any);
+                        if (saved) {
+                            img.scaleX = saved.scaleX || 1;
+                            img.scaleY = saved.scaleY || 1;
+                            img.angle = saved.angle || 0;
+                        } else {
+                            img.scaleToWidth(120);
+                        }
+                        c.add(img);
+                        c.renderAll();
+                    });
+                }
+            });
+
             // 25b. RESTORE SELECTION
             if (activeId) {
                 const newActive = c.getObjects().find(o => (o as any).id === activeId);
@@ -3214,7 +3257,7 @@ const CheckBuilder: React.FC = () => {
                 c.requestRenderAll();
             }
         }); // Close setBackgroundColor callback
-    }, [checkData, checkStyle, selectedFont, selectedTexture, paperColor, selectedBank, securityFeatures, handwritingStyle, handwritingRotation, handwritingVariation, handwritingColor, textureOpacity, logoImage, signatureImage, signatureStyle, deletedIds]);
+    }, [checkData, checkStyle, selectedFont, selectedTexture, paperColor, selectedBank, securityFeatures, handwritingStyle, handwritingRotation, handwritingVariation, handwritingColor, textureOpacity, logoImage, signatureImage, signatureStyle, deletedIds, customObjects]);
 
     const getWatermarkText = () => {
         if (checkStyle === 'cashier') return "CASHIER'S CHECK";
@@ -3362,6 +3405,21 @@ const CheckBuilder: React.FC = () => {
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
     };
 
+    const handleAddText = () => {
+        setCustomObjects(prev => [...prev, { id: `uctx-${Date.now()}`, kind: 'text', text: 'New Text', left: 110, top: 110 }]);
+    };
+
+    const handleAttachImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCustomObjects(prev => [...prev, { id: `uimg-${Date.now()}`, kind: 'image', src: String(reader.result), left: 90, top: 90 }]);
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
     const handleGenerateMobileShot = async () => {
         if (!fabricCanvas) return;
 
@@ -3501,6 +3559,17 @@ const CheckBuilder: React.FC = () => {
     // Apply bank template
     const applyBankTemplate = (bankId: string) => {
         setSelectedBank(bankId);
+
+        // Default Clean Style: restore the out-of-box defaults - a template
+        // selection overwrites bank name/address, so switching back must too.
+        if (!bankId) {
+            setCheckData(prev => ({ ...prev, bankName: 'Bank of Omni', bankAddress: '456 FINANCE WAY, NEW YORK, NY 10001' }));
+            setPaperColor('#f8f4ec');
+            setSelectedTexture('linen');
+            setSelectedFont('times');
+            setTextureOpacity(1.0);
+            return;
+        }
 
         // Find template in either bank-specific or premium lists
         const bankTemplate = bankSpecificTemplates[bankId];
@@ -3951,6 +4020,12 @@ const CheckBuilder: React.FC = () => {
         };
 
         fabricCanvas.on('object:modified', (e) => updatePosition(e.target));
+        fabricCanvas.on('text:editing:exited', (e: any) => {
+            const t = e.target;
+            if (t && t.id && String(t.id).startsWith('uctx-')) {
+                setCustomObjects(prev => prev.map(o => o.id === t.id ? { ...o, text: t.text } : o));
+            }
+        });
         // Removed continuous listeners to prevent heavy re-renders while dragging
 
         // KEYBOARD CONTROLS — Delete, Backspace, Ctrl+A, Escape
@@ -4982,17 +5057,21 @@ const CheckBuilder: React.FC = () => {
                         </select>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button style={toolBtnStyle} title="Support/Chat">💬</button>
                         <button style={toolBtnStyle} onClick={() => handlePaste()} title="Paste Signature (Ctrl+V)">📋</button>
                         <button style={toolBtnStyle} onClick={() => setIsSignatureLabOpen(true)} title="Signature Lab">✏️</button>
-                        <button style={toolBtnStyle} title="Add Text">T</button>
+                        <button style={toolBtnStyle} onClick={handleAddText} title="Add Text">T</button>
                         <button style={toolBtnStyle} onClick={async () => {
                             if (signatureImage) {
                                 const cleaned = await SignatureExtractorEngine.processSignature(signatureImage, { tintColor: handwritingColor });
                                 setSignatureImage(cleaned);
+                            } else {
+                                alert('Add or draw a signature first - Auto-Isolate cleans up an existing signature.');
                             }
                         }} title="Auto-Isolate Signature">🖍️</button>
-                        <button style={toolBtnStyle} title="Attachments">📎</button>
+                        <label style={{ ...toolBtnStyle, cursor: 'pointer' }} title="Attachments">
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAttachImage} />
+                            📎
+                        </label>
                         <span style={{ color: '#475569', margin: '0 2px', fontSize: '10px' }}>|</span>
                         <button style={toolBtnStyle} onClick={handleDownloadPDF} title="Print / PDF">🖨️</button>
                     </div>
