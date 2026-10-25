@@ -3408,6 +3408,11 @@ const CheckBuilder: React.FC = () => {
     // Toggle dropdown state
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [zoom, setZoom] = useState(0.85);
+    const stepZoom = (dir: number) => {
+        const stops = [0.5, 0.75, 0.85, 1, 1.25];
+        const cur = stops.reduce((best, z, i) => Math.abs(z - zoom) < Math.abs(stops[best] - zoom) ? i : best, 0);
+        setZoom(stops[Math.min(stops.length - 1, Math.max(0, cur + dir))]);
+    };
 
     // Apply bank template
     const applyBankTemplate = (bankId: string) => {
@@ -3799,8 +3804,8 @@ const CheckBuilder: React.FC = () => {
         return () => window.removeEventListener('resize', compute);
     }, [zoom, checkDimensions.width]);
     const effectiveZoom = mobileFit ?? zoom;
-    const scaledLayoutW = mobileFit !== null ? Math.ceil((checkDimensions.width + 20) * effectiveZoom) : undefined;
-    const scaledLayoutH = mobileFit !== null ? Math.ceil((dynamicCanvasHeight + 60) * 2 * effectiveZoom + 16) : undefined;
+    const scaledLayoutW = Math.ceil((checkDimensions.width + 20) * effectiveZoom);
+    const scaledLayoutH = Math.ceil((dynamicCanvasHeight + 60) * 2 * effectiveZoom + 16);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -4878,8 +4883,8 @@ const CheckBuilder: React.FC = () => {
                             if (container) container.scrollTop = 1000;
                         }}>↓ Back</button>
                         <span style={{ color: '#475569', margin: '0 2px', fontSize: '10px' }}>|</span>
-                        <button style={toolBtnStyle} onClick={() => setZoom(Math.max(0.3, zoom - 0.1))}>−</button>
-                        <button style={toolBtnStyle} onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}>+</button>
+                        <button style={toolBtnStyle} onClick={() => stepZoom(-1)}>−</button>
+                        <button style={toolBtnStyle} onClick={() => stepZoom(1)}>+</button>
                         <select
                             style={zoomSelectStyle}
                             value={Math.round(zoom * 100) + '%'}
