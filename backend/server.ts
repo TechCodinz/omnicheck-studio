@@ -48,7 +48,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('combined'));
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    // Health checks are infrastructure, not user traffic. Render's checker
+    // and uptime monitors poll /api/health constantly from fixed IPs; when
+    // this limiter throttled them, /api/health returned 429, Render marked
+    // the instance failed and restarted it roughly every 8 minutes - and
+    // every restart wiped the on-disk SQLite database (accounts included).
+    // Auth endpoints keep their own stricter limiter (rateLimitAuth).
+    skip: (req) => req.path === '/health' || req.path === '/api/health'
+});
 app.use('/api/', limiter);
 
 app.get('/api/health', (req: Request, res: Response) => {
