@@ -19,13 +19,16 @@ export class CheckBackEngine {
         const endorsementX = width - (1.5 * 72 * scale);
 
         // Left Panel (Main Security Body - Light Blue)
+        // When the selected design carries a primary colour, the panel
+        // takes a pale tint of it, so each design's back is its own;
+        // with no design colour it stays the standard security blue.
         objects.push(new fabric.Rect({
             id: 'back-bg-left', // UNIQUE ID
             left: 0,
             top: 0,
             width: endorsementX,
             height: height,
-            fill: '#e3f2fd',
+            fill: CheckBackEngine.paleTint(config.tint),
             selectable: true, evented: true, hasControls: true, lockRotation: true
         } as any));
 
@@ -43,6 +46,24 @@ export class CheckBackEngine {
         // 1. Watermark (Horizontal Center - Draggable, Big & Bold)
         this.addHorizontalWatermark(width, height, scale, objects);
 
+        // 1b. Design identity: the bank/design name across the top of
+        // the blue field. Until now every design produced the identical
+        // back - the name was passed in and never used.
+        if (config.bankName && String(config.bankName).trim()) {
+            objects.push(new fabric.Text(String(config.bankName).toUpperCase(), {
+                id: 'back-bank-name', // UNIQUE ID
+                left: endorsementX / 2,
+                top: 14 * scale,
+                fontSize: 11 * scale,
+                fontWeight: '600',
+                fontFamily: 'Arial',
+                fill: '#2f5d7d',
+                charSpacing: 2 * scale,
+                originX: 'center',
+                selectable: true, evented: true, hasControls: true
+            } as any));
+        }
+
         // 2. Endorsement Zone (Right Side - All elements unlocked)
         this.addUnlockedEndorsementZone(width, height, scale, objects, style, depositConfig, signatureImage);
 
@@ -50,6 +71,18 @@ export class CheckBackEngine {
         this.addUnlockedSecurityBox(width, height, scale, objects);
 
         return objects;
+    }
+
+    // Mix a design colour 88% toward white: a pale security tint in the
+    // design's family. Anything that is not a #rrggbb colour falls back
+    // to the standard security blue.
+    private static paleTint(hex: any): string {
+        if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return '#e3f2fd';
+        const mix = (v: number) => Math.round(v + (255 - v) * 0.88);
+        const r = mix(parseInt(hex.slice(1, 3), 16));
+        const g = mix(parseInt(hex.slice(3, 5), 16));
+        const b = mix(parseInt(hex.slice(5, 7), 16));
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     private static addHorizontalWatermark(width: number, height: number, scale: number, objects: fabric.Object[]): void {

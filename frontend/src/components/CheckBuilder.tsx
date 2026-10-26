@@ -122,7 +122,8 @@ const SECURITY_FEATURES = [
     { id: 'anti_copy_vdot', name: 'Anti-Copy V-Dot', enabled: true },
     { id: 'prismatic_column', name: 'Prismatic Security Column', enabled: true },
     { id: 'microprint_sig', name: 'Microprint Signature Line', enabled: true },
-    { id: 'cpsa_padlock', name: 'CPSA Padlock Icon', enabled: true }
+    { id: 'cpsa_padlock', name: 'CPSA Padlock Icon', enabled: true },
+    { id: 'micr_clear_band', name: 'MICR Clear Band Protection', enabled: true }
 ];
 
 // SOPHISTICATED NON-BANK TEMPLATES (Premium depositable designs)
@@ -545,10 +546,18 @@ const CheckBack = forwardRef<{ getDataURL: () => string | null; captureForExport
         canvas.setBackgroundColor(getCurrentPaperColor(), () => canvas.renderAll());
 
         try {
+            // The back belongs to the selected design: its display name
+            // (bank template, premium template, or the bank name on the
+            // check) and a pale tint of its primary colour.
+            const backBankTemplate = selectedBank ? (bankSpecificTemplates as any)[selectedBank] : null;
+            const backPremiumTemplate = selectedBank ? PREMIUM_TEMPLATES.find((p: any) => p.id === selectedBank) : null;
+            const designName = backBankTemplate?.name || backPremiumTemplate?.name || checkData.bankName || '';
+            const designPrimary = backBankTemplate?.specs?.colors?.primary || backPremiumTemplate?.colors?.primary || null;
             const backObjects = CheckBackEngine.generateCheckBack(width, height, {
                 type: 'mobile',
                 includeSignatureLine: true,
-                bankName: selectedBank,
+                bankName: designName,
+                tint: designPrimary,
                 style: backSideStyle,
                 accountNumber: checkData.accountNumber,
                 name: checkData.payeeName || checkData.accountHolderName,
@@ -853,13 +862,19 @@ const CheckBuilder: React.FC = () => {
         // holder block at top 40 printed INTO it, the date row crossed the
         // fractional routing, and memo/signature floated mid-check because
         // they were fixed at 220 instead of anchored above the MICR band.
+        // Top-right stack rhythm: check number 10, fractional 31, date 52
+        // (even 21-unit steps; the date previously sat at 64, level with
+        // the holder block, which read as a stagger). Amount group at 106:
+        // the box is 38 tall and the payee rule sits at payTo.top + 28 =
+        // 144, so 106 seats the box's bottom edge exactly on the payee
+        // line - at 108 it hung 2 units below it and straddled the row.
         const baseLayout = {
             checkNumber: { left: W - 100, top: 10 },
             fractionalRouting: { left: W - 100, top: 31 },
             bankDetails: { left: 40, top: 12 },
             accHolder: { left: 40, top: 62 },
-            dateGroup: { left: W - 220, top: 64 },
-            amountGroup: { left: W - 150, top: 108 },
+            dateGroup: { left: W - 220, top: 52 },
+            amountGroup: { left: W - 150, top: 106 },
             payTo: { left: 40, top: 116 },
             writtenAmount: { left: 40, top: 154 },
             memoGroup: { left: 40, top: H - 88 },
@@ -2087,8 +2102,13 @@ const CheckBuilder: React.FC = () => {
 
                 // Top border
                 ctx.fillText(microText, 10, 8);
-                // Bottom border
-                ctx.fillText(microText, 10, H - 10); // Edge to edge at bottom
+                // Bottom border: this segment sits inside the MICR clear
+                // band (ANSI X9.27 - the bottom 5/8 inch carries MICR
+                // characters only), so it prints only when the owner
+                // turns MICR Clear Band Protection off.
+                if (!isSecurityEnabled('micr_clear_band')) {
+                    ctx.fillText(microText, 10, H - 10); // Edge to edge at bottom
+                }
 
                 // Left Vertical
                 ctx.save();
@@ -3612,7 +3632,17 @@ const CheckBuilder: React.FC = () => {
             height: checkDimensions.height,
             backgroundColor: '#ffffff' // Ensure white paper background
         });
-        const backObjects = CheckBackEngine.generateCheckBack(checkDimensions.width, checkDimensions.height, securityFeatures, 72, {
+        // This call previously passed the securityFeatures ARRAY as the
+        // engine config, so the chosen deposit style never reached the
+        // engine and every exported back silently used the mobile style.
+        // It now passes the same design config as the on-screen back.
+        const exportDesignName = bankTemplate?.name || premiumTemplate?.name || checkData.bankName || '';
+        const exportDesignPrimary = bankTemplate?.specs?.colors?.primary || premiumTemplate?.colors?.primary || null;
+        const backObjects = CheckBackEngine.generateCheckBack(checkDimensions.width, checkDimensions.height, {
+            style: backSideStyle,
+            bankName: exportDesignName,
+            tint: exportDesignPrimary
+        }, 72, {
             name: checkData.payeeName || checkData.accountHolderName,
             date: checkData.date,
             signatureFont: getHandwritingFont(signatureStyle),
