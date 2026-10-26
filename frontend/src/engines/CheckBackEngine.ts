@@ -54,11 +54,11 @@ export class CheckBackEngine {
 
     private static addHorizontalWatermark(width: number, height: number, scale: number, objects: fabric.Object[]): void {
         const endorsementX = width - (1.5 * 72 * scale);
-        // The open area between the security box (ends at 200*scale, see
+        // The open area between the security box (ends at 202*scale, see
         // addUnlockedSecurityBox) and the endorsement strip. The watermark
         // is centred and sized on THIS area so it never runs under the box
         // or into the strip.
-        const openL = 200 * scale;
+        const openL = 202 * scale;
         const openW = endorsementX - openL;
         const commonProps = {
             left: openL + (openW / 2),
@@ -255,10 +255,14 @@ export class CheckBackEngine {
         // edge, the six security features as single bulleted lines on an
         // even pitch, and the SECURITY FEATURES title as a bold column
         // at the box's right edge. Nothing else lives in the box.
-        const boxLeft = 8 * scale;
-        const boxTop = 27 * scale;
-        const boxW = 192 * scale;
-        const boxH = height - (70 * scale);
+        // First placement (left 8, height H-70) still read as a floating
+        // inset box against the photo - in the photo the frame nearly
+        // touches the check's left edge and the box is a tall slab with
+        // only ~7% margins top and bottom. These numbers match that.
+        const boxLeft = 2 * scale;
+        const boxTop = 24 * scale;
+        const boxW = 200 * scale;
+        const boxH = height - (50 * scale);
         const colY = boxTop + (boxH / 2);
         const col = (offset: number) => boxLeft + (offset * scale);
 
