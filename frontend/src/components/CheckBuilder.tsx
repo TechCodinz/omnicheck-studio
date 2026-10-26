@@ -19,6 +19,8 @@ import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
 import { MICRComplianceEngine } from '../engines/MICRComplianceEngine';
 import { convertToWords } from '../utils/numberToWords';
+import { useHistorySnapshots } from '../hooks/useHistorySnapshots';
+import HistoryBar from './HistoryBar';
 
 // ============== CONSTANTS ==============
 // Standard Business Check: 8.25" x 3.00" -> 825px x 300px (100px/inch base)
@@ -994,6 +996,58 @@ const CheckBuilder: React.FC = () => {
     const [panelRetracted, setPanelRetracted] = useState<boolean>(() => { try { return localStorage.getItem('oc-panel-retracted') === '1'; } catch (err) { return false; } });
     const togglePanel = (retract: boolean) => { setPanelRetracted(retract); try { localStorage.setItem('oc-panel-retracted', retract ? '1' : '0'); } catch (err) { /* storage unavailable */ } };
     const [isDraggingAiBar, setIsDraggingAiBar] = useState(false);
+
+    // --- Design history: Save / Undo / Redo (owner's requirement) ---
+    // The whole editable design - fields, template, paper, security
+    // toggles, dragged positions on both sides, deletions, signature
+    // and handwriting settings - is one snapshot. Save persists it in
+    // the browser so the design never snaps back to the old style on
+    // reload; Undo/Redo walk the recorded steps.
+    const designHistory = useHistorySnapshots({
+        storageKey: 'oc-check-design',
+        snapshot: () => ({
+            checkData, selectedBank, paperColor, selectedTexture, selectedFont,
+            checkStyle, checkDimensions, borderConfig, securityFeatures,
+            objectPositions, deletedIds, deletedBackIds, backSideStyle,
+            signatureStyle, handwritingStyle, handwritingColor,
+            handwritingRotation, handwritingVariation, textureOpacity,
+            showMicrBand, showAmountBorder, customObjects, logoImage, signatureImage
+        }),
+        apply: (s: any) => {
+            if (!s) return;
+            if ('checkData' in s) setCheckData(s.checkData);
+            if ('selectedBank' in s) setSelectedBank(s.selectedBank);
+            if ('paperColor' in s) setPaperColor(s.paperColor);
+            if ('selectedTexture' in s) setSelectedTexture(s.selectedTexture);
+            if ('selectedFont' in s) setSelectedFont(s.selectedFont);
+            if ('checkStyle' in s) setCheckStyle(s.checkStyle);
+            if ('checkDimensions' in s) setCheckDimensions(s.checkDimensions);
+            if ('borderConfig' in s) setBorderConfig(s.borderConfig);
+            if ('securityFeatures' in s) setSecurityFeatures(s.securityFeatures);
+            if ('objectPositions' in s) setObjectPositions(s.objectPositions);
+            if ('deletedIds' in s) setDeletedIds(s.deletedIds);
+            if ('deletedBackIds' in s) setDeletedBackIds(s.deletedBackIds);
+            if ('backSideStyle' in s) setBackSideStyle(s.backSideStyle);
+            if ('signatureStyle' in s) setSignatureStyle(s.signatureStyle);
+            if ('handwritingStyle' in s) setHandwritingStyle(s.handwritingStyle);
+            if ('handwritingColor' in s) setHandwritingColor(s.handwritingColor);
+            if ('handwritingRotation' in s) setHandwritingRotation(s.handwritingRotation);
+            if ('handwritingVariation' in s) setHandwritingVariation(s.handwritingVariation);
+            if ('textureOpacity' in s) setTextureOpacity(s.textureOpacity);
+            if ('showMicrBand' in s) setShowMicrBand(s.showMicrBand);
+            if ('showAmountBorder' in s) setShowAmountBorder(s.showAmountBorder);
+            if ('customObjects' in s) setCustomObjects(s.customObjects);
+            if ('logoImage' in s) setLogoImage(s.logoImage);
+            if ('signatureImage' in s) setSignatureImage(s.signatureImage);
+        },
+        stripForSave: (s: any) => ({ ...s, logoImage: null, signatureImage: null }),
+        watch: [checkData, selectedBank, paperColor, selectedTexture, selectedFont,
+            checkStyle, checkDimensions, borderConfig, securityFeatures,
+            objectPositions, deletedIds, deletedBackIds, backSideStyle,
+            signatureStyle, handwritingStyle, handwritingColor,
+            handwritingRotation, handwritingVariation, textureOpacity,
+            showMicrBand, showAmountBorder, customObjects, logoImage, signatureImage]
+    });
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
     // =========================================================================
@@ -5159,6 +5213,9 @@ const CheckBuilder: React.FC = () => {
 
             {/* RIGHT SIDE - PREVIEW */}
             <div style={previewContainerStyle}>
+                <div style={{ padding: '10px 12px 0' }}>
+                    <HistoryBar history={designHistory} dark label="Design" />
+                </div>
                 <div className="oc-toolbar" style={{ ...previewHeaderStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ color: '#4CAF50', fontSize: '8px' }}>●</span>

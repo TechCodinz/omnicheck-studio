@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/apiClient';
+import { useHistorySnapshots } from '../hooks/useHistorySnapshots';
+import HistoryBar from './HistoryBar';
 
 interface InvoiceItem {
     id: string;
@@ -68,6 +70,28 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
     });
 
     // Payer Checkout State
+    // --- Design history: Save / Undo / Redo (shared with the other editors) ---
+    // Covers the invoice builder's own design: client, terms, line items
+    // and payout routing. Payer checkout details are deliberately NOT
+    // snapshotted or saved - they are the payer's data, entered per sale.
+    const designHistory = useHistorySnapshots({
+        storageKey: 'oc-invoice-design',
+        snapshot: () => ({ clientName, clientEmail, currency, notes, items, payoutDest, receiverBank, receiverSwift, receiverTags }),
+        apply: (s: any) => {
+            if (!s) return;
+            if ('clientName' in s) setClientName(s.clientName);
+            if ('clientEmail' in s) setClientEmail(s.clientEmail);
+            if ('currency' in s) setCurrency(s.currency);
+            if ('notes' in s) setNotes(s.notes);
+            if ('items' in s) setItems(s.items);
+            if ('payoutDest' in s) setPayoutDest(s.payoutDest);
+            if ('receiverBank' in s) setReceiverBank(s.receiverBank);
+            if ('receiverSwift' in s) setReceiverSwift(s.receiverSwift);
+            if ('receiverTags' in s) setReceiverTags(s.receiverTags);
+        },
+        watch: [clientName, clientEmail, currency, notes, items, payoutDest, receiverBank, receiverSwift, receiverTags]
+    });
+
     const [checkoutMethod, setCheckoutMethod] = useState<'CARD' | 'PLAID' | 'MANUAL_ACH' | 'SWIFT' | 'DIGITAL_TAGS'>('CARD');
     const [cardData, setCardData] = useState({ number: '4242 •••• •••• 4242', exp: '12/28', cvc: '888', name: 'Authorized Officer' });
     const [manualAchData, setManualAchData] = useState({
@@ -437,6 +461,9 @@ export const MerchantInvoicingEngine: React.FC<{ onClose?: () => void }> = ({ on
                     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 24, maxWidth: 1300, margin: '0 auto' }}>
                         {/* Left Column: Form */}
                         <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '24px' }}>
+                            <div style={{ marginBottom: 16 }}>
+                                <HistoryBar history={designHistory} dark label="Invoice Design" />
+                            </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: 16, color: '#38BDF8' }}>
                                 Client Information & Invoicing Terms
                             </div>

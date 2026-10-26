@@ -7,6 +7,8 @@ import { UniversalDocumentCloningEngine } from '../engines/UniversalDocumentClon
 import { TeamCollaborationEngine } from '../collaboration/TeamCollaborationEngine';
 import { BorderlineEngine, BorderConfig } from './BorderlineEngine';
 import UltimateCustomizationPanel from './UltimateCustomizationPanel';
+import { useHistorySnapshots } from '../hooks/useHistorySnapshots';
+import HistoryBar from './HistoryBar';
 
 type FieldType = 'text' | 'number' | 'date' | 'photo' | 'signature' | 'ssn' | 'ein' | 'currency' | 'select';
 
@@ -130,6 +132,19 @@ export const GlobalDocumentEditor: React.FC<GlobalDocumentEditorProps> = ({ docu
     const [selectedField, setSelectedField] = useState<string | null>(null);
     const [collaborators, setCollaborators] = useState<Map<string, { x: number, y: number, name: string }>>(new Map());
     const [fraudRisk, setFraudRisk] = useState<{ level: string, score: number }>({ level: 'low', score: 0 });
+
+    // --- Design history: Save / Undo / Redo (shared with the other editors) ---
+    const designHistory = useHistorySnapshots({
+        storageKey: 'oc-globaldoc-design',
+        snapshot: () => ({ doc, borderConfig, activeTemplate }),
+        apply: (s: any) => {
+            if (!s) return;
+            if ('activeTemplate' in s) setActiveTemplate(s.activeTemplate);
+            if ('borderConfig' in s) setBorderConfig(s.borderConfig);
+            if ('doc' in s) setDoc(s.doc);
+        },
+        watch: [doc, borderConfig, activeTemplate]
+    });
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
 
@@ -233,6 +248,10 @@ export const GlobalDocumentEditor: React.FC<GlobalDocumentEditorProps> = ({ docu
                         <span style={{ fontSize: '12px', fontWeight: '600', color: colors.primary }}>{collaborators.size + 1} Editors</span>
                     </div>
                 </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+                <HistoryBar history={designHistory} label="Design" />
             </div>
 
             {/* Template Select */}

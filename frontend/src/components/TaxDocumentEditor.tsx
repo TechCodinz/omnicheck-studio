@@ -16,6 +16,8 @@ import IDFormRenderer from './IDFormRenderer';
 import DeliveryModal, { CheckDeliveryOptions } from './DeliveryModal';
 import { BorderConfig } from './BorderlineEngine';
 import UltimateCustomizationPanel from './UltimateCustomizationPanel';
+import { useHistorySnapshots } from '../hooks/useHistorySnapshots';
+import HistoryBar from './HistoryBar';
 import { apiUrl } from '../config';
 
 // ============== TYPES ==============
@@ -214,6 +216,19 @@ export const TaxDocumentEditor: React.FC<TaxDocumentEditorProps> = ({
         color: '#222222',
         thickness: 2,
         cornerRadius: 0
+    });
+
+    // --- Design history: Save / Undo / Redo (shared with the other editors) ---
+    const designHistory = useHistorySnapshots({
+        storageKey: 'oc-tax-design',
+        snapshot: () => ({ fields: state.fields, selectedDocType, borderConfig }),
+        apply: (s: any) => {
+            if (!s) return;
+            if ('fields' in s) setState(prev => ({ ...prev, fields: s.fields, isModified: true }));
+            if ('selectedDocType' in s) setSelectedDocType(s.selectedDocType);
+            if ('borderConfig' in s) setBorderConfig(s.borderConfig);
+        },
+        watch: [state.fields, selectedDocType, borderConfig]
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -633,6 +648,10 @@ export const TaxDocumentEditor: React.FC<TaxDocumentEditorProps> = ({
                 <p style={{ margin: 0, color: colors.textSecondary, fontSize: '14px' }}>
                     Upload, edit, and generate tax documents (W-2, 1099, 1040, etc.)
                 </p>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+                <HistoryBar history={designHistory} label="Design" />
             </div>
 
             {/* Tabs */}
