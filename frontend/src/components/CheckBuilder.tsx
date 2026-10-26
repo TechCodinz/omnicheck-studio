@@ -3305,7 +3305,7 @@ const CheckBuilder: React.FC = () => {
                 c.requestRenderAll();
             }
         }); // Close setBackgroundColor callback
-    }, [checkData, checkStyle, selectedFont, selectedTexture, paperColor, selectedBank, securityFeatures, handwritingStyle, handwritingRotation, handwritingVariation, handwritingColor, textureOpacity, logoImage, signatureImage, signatureStyle, deletedIds, customObjects]);
+    }, [checkData, checkStyle, selectedFont, selectedTexture, paperColor, selectedBank, securityFeatures, handwritingStyle, handwritingRotation, handwritingVariation, handwritingColor, textureOpacity, logoImage, signatureImage, signatureStyle, deletedIds, customObjects, isPaid]);
 
     const getWatermarkText = () => {
         if (checkStyle === 'cashier') return "CASHIER'S CHECK";

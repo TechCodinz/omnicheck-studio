@@ -12,6 +12,7 @@
  * 2026-10-24 hardening pass — rotate it anywhere it was reused.
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext';
 
 // ============== PLAN DEFINITIONS ==============
 export interface PlanDef {
@@ -161,10 +162,19 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.setItem(STORAGE_KEY, JSON.stringify(license));
     }, [license]);
 
-    const currentPlan = PLANS.find(p => p.id === license.planId) || PLANS[0];
-    const isPaid = license.planId !== 'free';
-    const isProOrAbove = ['professional', 'enterprise'].includes(license.planId);
-    const isEnterprise = license.planId === 'enterprise';
+    // Owner/admin accounts (server-issued role via ADMIN_EMAIL) always
+    // resolve to the top tier: the owner cannot run their own product
+    // behind the free watermark and export locks. The stored customer
+    // license is left untouched, so a non-admin sign-in on the same
+    // browser keeps its own plan.
+    const { user } = useAuth();
+    const isAdminAccount = user?.role === 'admin';
+    const effectivePlanId = isAdminAccount ? 'enterprise' : license.planId;
+
+    const currentPlan = PLANS.find(p => p.id === effectivePlanId) || PLANS[0];
+    const isPaid = effectivePlanId !== 'free';
+    const isProOrAbove = ['professional', 'enterprise'].includes(effectivePlanId);
+    const isEnterprise = effectivePlanId === 'enterprise';
 
     const checksRemaining = currentPlan.checksPerMonth === -1
         ? Infinity
@@ -187,6 +197,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, []);
 
     const useCheckExport = useCallback((): boolean => {
+        if (isAdminAccount) return true; // owner exports are not metered
         if (!isPaid) return false;
         if (currentPlan.checksPerMonth !== -1 && checksRemaining <= 0) return false;
         setLicense(prev => ({
@@ -194,7 +205,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             checksUsedThisMonth: prev.checksUsedThisMonth + 1
         }));
         return true;
-    }, [isPaid, checksRemaining, currentPlan.checksPerMonth]);
+    }, [isAdminAccount, isPaid, checksRemaining, currentPlan.checksPerMonth]);
 
     const resetToFree = useCallback(() => {
         setLicense({ ...DEFAULT_LICENSE });

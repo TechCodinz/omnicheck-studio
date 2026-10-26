@@ -87,7 +87,7 @@ const PricingPage: React.FC = () => {
             <div className="oc-gcards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
                 {PLANS.map((p: PlanDef) => {
                     const isPopular = p.id === 'professional';
-                    const isCurrent = license.planId === p.id;
+                    const isCurrent = currentPlan.id === p.id;
 
                     return (
                         <div key={p.id} style={{
