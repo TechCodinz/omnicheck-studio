@@ -117,7 +117,6 @@ const SECURITY_FEATURES = [
     { id: 'uv_markers', name: 'UV Security Markers', enabled: false },
     { id: 'holographic', name: 'Holographic Strip', enabled: false },
     { id: 'chemical_reactive', name: 'Chemical Reactive Paper', enabled: true },
-    { id: 'rainbow_stripe', name: 'Rainbow Security Stripe', enabled: true },
     { id: 'thermochromic', name: 'Thermochromic Ink', enabled: true },
     { id: 'warning_band', name: 'Security Warning Band', enabled: true },
     { id: 'anti_copy_vdot', name: 'Anti-Copy V-Dot', enabled: true },
@@ -2106,6 +2105,26 @@ const CheckBuilder: React.FC = () => {
                 ctx.restore();
             }
 
+            // 6a. UV SECURITY MARKERS (design-layer representation of UV-reactive marks)
+            if (isSecurityEnabled('uv_markers')) {
+                ctx.save();
+                const uvSeed = 7;
+                const uvRand = (n: number) => { const x = Math.sin(n * 4177 + uvSeed) * 10000; return x - Math.floor(x); };
+                ctx.fillStyle = 'rgba(140, 255, 120, 0.28)';
+                ctx.strokeStyle = 'rgba(120, 255, 110, 0.35)';
+                for (let i = 0; i < 16; i++) {
+                    const ux = 30 + uvRand(i) * (W - 60);
+                    const uy = 30 + uvRand(i + 50) * (textureBottom - 90);
+                    const r = 1.6 + uvRand(i + 90) * 2.2;
+                    ctx.beginPath(); ctx.arc(ux, uy, r, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.font = 'bold 7px Arial';
+                ctx.fillStyle = 'rgba(120, 255, 110, 0.4)';
+                ctx.fillText('UV', W - 42, 34);
+                ctx.beginPath(); ctx.arc(W - 34, 31, 10, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+
             // 6b. PRISMATIC SECURITY COLUMN (Right Margin - Authentic Position)
             if (isSecurityEnabled('prismatic_column')) {
                 ctx.save();
@@ -2319,7 +2338,7 @@ const CheckBuilder: React.FC = () => {
             }
 
             // CPSA PADLOCK ICON (AUTHENTIC POSITION - NEXT TO AMOUNT BOX)
-            if (isSecurityEnabled('padlock_icon')) {
+            if (isSecurityEnabled('cpsa_padlock')) {
                 const padlockGroup = new fabric.Group([
                     new fabric.Text('🔒', { fontSize: 13, fill: '#222' }),
                     new fabric.Text('SECURE', { left: 18, top: 3, fontSize: 6, fontWeight: 'bold', fill: '#444' }),
@@ -2821,6 +2840,17 @@ const CheckBuilder: React.FC = () => {
                     top: objectPositionsRef.current.signatureLine?.top ?? (layout.signatureGroup.top + 20),
                     stroke: '#333', strokeWidth: 0.5,
                     selectable: true, hasControls: true, lockScalingY: true
+                } as any));
+            }
+
+            // 19a-ii. MICROPRINT SIGNATURE LINE (micro text carried on the signature rule - standard bank practice)
+            if (isSecurityEnabled('microprint_sig') && showLines) {
+                c.add(new fabric.Text('SECURE DOCUMENT • AUTHORIZED SIGNATURE • '.repeat(4), {
+                    id: 'microprintSigLine',
+                    left: objectPositionsRef.current.signatureLine?.left ?? layout.signatureGroup.left,
+                    top: (objectPositionsRef.current.signatureLine?.top ?? (layout.signatureGroup.top + 20)) - 3,
+                    fontSize: 3.4, fill: '#666', fontFamily: 'Arial',
+                    selectable: false
                 } as any));
             }
 
