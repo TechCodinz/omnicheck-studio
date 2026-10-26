@@ -17,7 +17,7 @@ export class AdminController {
     async getVerifications(req: Request, res: Response) {
         try {
             const limit = req.query.limit || 50;
-            const rows = DB.query(`
+            const rows = await DB.query(`
                 SELECT * FROM kyc_verifications 
                 ORDER BY created_at DESC 
                 LIMIT ?
@@ -34,7 +34,7 @@ export class AdminController {
     async getACHBatches(req: Request, res: Response) {
         try {
             const limit = req.query.limit || 50;
-            const rows = DB.query(`
+            const rows = await DB.query(`
                 SELECT * FROM ach_batches 
                 ORDER BY created_at DESC 
                 LIMIT ?
@@ -50,8 +50,8 @@ export class AdminController {
      */
     async getSystemStats(req: Request, res: Response) {
         try {
-            const kycCount = DB.get(`SELECT COUNT(*) as count FROM kyc_verifications`) as { count: number };
-            const achVolume = DB.get(`SELECT SUM(total_amount) as volume FROM ach_batches WHERE status = 'PROCESSED'`) as { volume: number };
+            const kycCount = await DB.get(`SELECT COUNT(*) as count FROM kyc_verifications`) as { count: number };
+            const achVolume = await DB.get(`SELECT SUM(total_amount) as volume FROM ach_batches WHERE status = 'PROCESSED'`) as { volume: number };
 
             res.json({
                 kyc_total: kycCount?.count || 0,

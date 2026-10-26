@@ -35,7 +35,7 @@ export class ACHProcessor {
         console.log(`[ACH PROCESSOR] Starting Batch for User: ${userId}`);
 
         // 1. KYC Gate
-        if (!this.identityService.isUserVerified(userId)) {
+        if (!(await this.identityService.isUserVerified(userId))) {
             return {
                 success: false,
                 status: 'REJECTED',
@@ -56,7 +56,7 @@ export class ACHProcessor {
 
             // 4. Persist Batch Log
             const status = transmission.success ? 'PROCESSED' : 'FAILED';
-            DB.run(`
+            await DB.run(`
                 INSERT INTO ach_batches (batch_id, status, entry_count, total_amount, transmission_log)
                 VALUES (?, ?, ?, ?, ?)
             `, [
@@ -87,7 +87,7 @@ export class ACHProcessor {
         } catch (error: any) {
             console.error('[ACH PROCESSOR] Error:', error);
             // Log critical failure
-            DB.run(`
+            await DB.run(`
                 INSERT INTO ach_batches (batch_id, status, transmission_log)
                 VALUES (?, 'CRITICAL_ERROR', ?)
             `, [`ERR-${Date.now()}`, JSON.stringify({ error: error.message })]);

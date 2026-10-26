@@ -17,7 +17,7 @@ import { DB } from '../../db/Database';
  * IdentityVerificationService
  * 
  * Orchestrates multiple identity verification (KYC) flows.
- * Persists state to SQLite `kyc_verifications` table.
+ * Persists state to the `kyc_verifications` table.
  */
 export class IdentityVerificationService {
     private plaid: PlaidConnector;
@@ -37,7 +37,7 @@ export class IdentityVerificationService {
         console.log(`[KYC] Starting ${method} verification for user: ${userId}`);
 
         // Persist pending state
-        DB.run(`
+        await DB.run(`
             INSERT INTO kyc_verifications (user_id, method, status)
             VALUES (?, ?, 'PENDING')
         `, [userId, method]);
@@ -61,9 +61,9 @@ export class IdentityVerificationService {
         const result = await this.biometric.verifyIdentity(idImage, selfieImage);
 
         if (result.success) {
-            this.updateUserStatus(userId, 'VERIFIED', result);
+            await this.updateUserStatus(userId, 'VERIFIED', result);
         } else {
-            this.updateUserStatus(userId, 'REJECTED', result);
+            await this.updateUserStatus(userId, 'REJECTED', result);
         }
 
         return result;
@@ -72,11 +72,11 @@ export class IdentityVerificationService {
     /**
      * Check if a user is verified and allowed to deposit
      */
-    isUserVerified(userId: string): boolean {
+    async isUserVerified(userId: string): Promise<boolean> {
         // For development, we might auto-verify certain IDs
         if (userId === 'ADMIN_TEST') return true;
 
-        const record = DB.get(`
+        const record = await DB.get(`
             SELECT status FROM kyc_verifications 
             WHERE user_id = ? AND status = 'VERIFIED'
             ORDER BY created_at DESC LIMIT 1
@@ -85,8 +85,8 @@ export class IdentityVerificationService {
         return !!record;
     }
 
-    private updateUserStatus(userId: string, status: VerificationStatus, data: any = {}) {
-        DB.run(`
+    private async updateUserStatus(userId: string, status: VerificationStatus, data: any = {}) {
+        await DB.run(`
             UPDATE kyc_verifications 
             SET status = ?, data = ?, updated_at = CURRENT_TIMESTAMP
             WHERE user_id = ? AND status = 'PENDING'

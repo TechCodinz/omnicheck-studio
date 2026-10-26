@@ -27,7 +27,7 @@ class EncryptionServiceClass { async encrypt(d: any) { return 'encrypted'; } }
 class AuditServiceClass {
     async log(action: any) {
         try {
-            DB.run('INSERT INTO audit_logs (document_id, action, user_id, details) VALUES (?, ?, ?, ?)', [
+            await DB.run('INSERT INTO audit_logs (document_id, action, user_id, details) VALUES (?, ?, ?, ?)', [
                 action.documentId || 'unknown',
                 action.type,
                 action.user,

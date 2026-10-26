@@ -9,7 +9,7 @@ export class TaxController {
      */
     async getTemplates(req: Request, res: Response) {
         try {
-            const rows = db.prepare('SELECT * FROM tax_templates').all();
+            const rows = await db.prepare('SELECT * FROM tax_templates').all();
             res.json(rows.map((row: any) => ({
                 ...row,
                 schema: JSON.parse(row.schema)
@@ -30,7 +30,7 @@ export class TaxController {
         const id = uuidv4();
 
         try {
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO tax_documents (id, user_id, template_id, data, status, updated_at)
                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             `).run(id, userId, templateId, JSON.stringify(data), status || 'DRAFT');
@@ -50,7 +50,7 @@ export class TaxController {
         const userId = String((req as any).user?.id || '');
         if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
         try {
-            const rows = db.prepare('SELECT * FROM tax_documents WHERE user_id = ? ORDER BY updated_at DESC').all(userId);
+            const rows = await db.prepare('SELECT * FROM tax_documents WHERE user_id = ? ORDER BY updated_at DESC').all(userId);
             res.json(rows.map((row: any) => ({
                 ...row,
                 data: JSON.parse(row.data)
@@ -69,7 +69,7 @@ export class TaxController {
 
         try {
             const userId = String((req as any).user?.id || '');
-            const info: any = db.prepare(`
+            const info: any = await db.prepare(`
                 UPDATE tax_documents
                 SET data = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND user_id = ?
@@ -87,9 +87,9 @@ export class TaxController {
     /**
      * Seed initial templates if empty
      */
-    static seedTemplates() {
+    static async seedTemplates() {
         // Check if we need to seed (mock check, in real app would check individually)
-        const count = db.prepare('SELECT COUNT(*) as count FROM tax_templates').get() as any;
+        const count = await db.prepare('SELECT COUNT(*) as count FROM tax_templates').get() as any;
         if (count.count < 5) { // Simple check to trigger re-seed if we have fewer than expected
             console.log('[TAX] Seeding/Updating tax templates...');
 
@@ -150,12 +150,12 @@ export class TaxController {
                 VALUES (?, ?, ?, ?)
             `);
 
-            insert.run('irs-w2-standard', 'IRS Form W-2 Standard', 'WAGE', JSON.stringify(w2Schema));
-            insert.run('irs-1099-nec-standard', 'IRS Form 1099-NEC', 'INCOME', JSON.stringify(necSchema));
-            insert.run('irs-1099-misc-standard', 'IRS Form 1099-MISC', 'INCOME', JSON.stringify(miscSchema));
-            insert.run('irs-1099-int-standard', 'IRS Form 1099-INT', 'INCOME', JSON.stringify(intSchema));
-            insert.run('irs-1099-k-standard', 'IRS Form 1099-K', 'INCOME', JSON.stringify(kSchema));
-            insert.run('irs-1040-standard', 'IRS Form 1040 (Page 1)', 'TAX_RETURN', JSON.stringify(f1040Schema));
+            await insert.run('irs-w2-standard', 'IRS Form W-2 Standard', 'WAGE', JSON.stringify(w2Schema));
+            await insert.run('irs-1099-nec-standard', 'IRS Form 1099-NEC', 'INCOME', JSON.stringify(necSchema));
+            await insert.run('irs-1099-misc-standard', 'IRS Form 1099-MISC', 'INCOME', JSON.stringify(miscSchema));
+            await insert.run('irs-1099-int-standard', 'IRS Form 1099-INT', 'INCOME', JSON.stringify(intSchema));
+            await insert.run('irs-1099-k-standard', 'IRS Form 1099-K', 'INCOME', JSON.stringify(kSchema));
+            await insert.run('irs-1040-standard', 'IRS Form 1040 (Page 1)', 'TAX_RETURN', JSON.stringify(f1040Schema));
         }
     }
 }

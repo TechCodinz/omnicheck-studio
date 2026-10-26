@@ -20,7 +20,7 @@ class AnalyticsDatabase {
     async storeAnalytics(a: any) {
         a.id = 'aid_' + Date.now();
         try {
-            DB.run('INSERT INTO analytics (id, doc_id, event_type, data) VALUES (?, ?, ?, ?)', [
+            await DB.run('INSERT INTO analytics (id, doc_id, event_type, data) VALUES (?, ?, ?, ?)', [
                 a.id,
                 a.documentId,
                 'analytics_report',

@@ -303,12 +303,12 @@ export class AdvancedFraudDetection {
             const { DB } = require('../db/Database');
             // Check count of batches/transactions involving this account in last 24h
             // Note: Schema might vary, checking generic 'ach_batches' logic
-            const result = DB.prepare(`
+            const result = await DB.prepare(`
                 SELECT COUNT(*) as count, SUM(total_amount) as amount 
                 FROM ach_batches 
                 WHERE transmission_log LIKE ? 
-                AND created_at > datetime('now', '-1 day')
-            `).get(`%${account}%`);
+                AND created_at > ?
+            `).get(`%${account}%`, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
             if (result.count > 10 || result.amount > 100000) {
                 return { exceedsThreshold: true };

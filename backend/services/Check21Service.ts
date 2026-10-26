@@ -39,7 +39,7 @@ export class Check21Service {
         console.log(`--- Processing Check 21 Deposit (User: ${userId}) ---`);
 
         // 1. Identity Verification Gate (KYC)
-        if (!this.identityService.isUserVerified(userId)) {
+        if (!(await this.identityService.isUserVerified(userId))) {
             return {
                 success: false,
                 reason: 'IDENTITY_VERIFICATION_REQUIRED',

@@ -39,7 +39,7 @@ const fraudDetector = new AdvancedFraudDetection();
 const analytics = new AdvancedDocumentAnalytics();
 
 import { initDatabase } from './db/Database';
-try { initDatabase(); } catch (err) { console.error('Failed to initialize database:', err); }
+initDatabase().catch((err) => console.error('Failed to initialize database:', err));
 
 app.use(helmet());
 app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
@@ -67,19 +67,19 @@ app.get('/api/health', (req: Request, res: Response) => {
 
 import db from './db/Database';
 
-app.get('/api/templates', (req: Request, res: Response) => {
+app.get('/api/templates', async (req: Request, res: Response) => {
     try {
-        const rows = db.prepare('SELECT * FROM templates').all();
+        const rows = await db.prepare('SELECT * FROM templates').all();
         let templatesList = rows.map((row: any) => ({ id: row.id, ...JSON.parse(row.data) }));
         if (templatesList.length === 0) templatesList = [{ id: 'premium-1', name: 'Premium Corporate', thumbnail: '/thumbnails/premium-1.jpg', premium: true }];
         res.json({ success: true, templates: templatesList });
     } catch (error) { console.error('Template Fetch Error:', error); res.status(500).json({ success: false, error: 'Failed to fetch templates' }); }
 });
 
-app.get('/api/template/:id', (req: Request, res: Response) => {
+app.get('/api/template/:id', async (req: Request, res: Response) => {
     const templateId = req.params.id;
     try {
-        const row: any = db.prepare('SELECT * FROM templates WHERE id = ?').get(templateId);
+        const row: any = await db.prepare('SELECT * FROM templates WHERE id = ?').get(templateId);
         if (row) res.json({ success: true, template: { id: row.id, ...JSON.parse(row.data) } });
         else if (templateId === 'premium-1') res.json({ success: true, template: { name: 'Premium Corporate', bankCode: 'CHASE', background: '/templates/premium-1.jpg', fields: [{ name: 'payee', x: 70, y: 120, width: 300, fontSize: 14 }, { name: 'amount_numbers', x: 600, y: 120, width: 100, fontSize: 14 }, { name: 'amount_words', x: 70, y: 150, width: 400, fontSize: 12 }, { name: 'date', x: 500, y: 80, width: 100, fontSize: 12 }, { name: 'check_number', x: 650, y: 80, width: 80, fontSize: 12 }, { name: 'memo', x: 70, y: 180, width: 200, fontSize: 12 }, { name: 'signature', x: 450, y: 220, width: 200, fontSize: 12 }], security: { watermark: true, micrFont: true, microprint: true, pattern: 'geometric' } } });
         else res.status(404).json({ success: false, error: 'Template not found' });
@@ -99,7 +99,7 @@ app.post('/api/generate-pdf', authenticateToken, async (req: any, res: Response)
         if (missing.length > 0) return res.status(400).json({ success: false, error: `Invalid or missing fields: ${missing.join(', ')}` });
 
         let template;
-        const row: any = db.prepare('SELECT * FROM templates WHERE id = ?').get(templateId);
+        const row: any = await db.prepare('SELECT * FROM templates WHERE id = ?').get(templateId);
         if (row) template = { id: row.id, ...JSON.parse(row.data) };
         else if (templateId === 'premium-1') template = { name: 'Premium Corporate', bankCode: 'CHASE', background: '/templates/premium-1.jpg', fields: [{ name: 'payee', x: 70, y: 120, width: 300, fontSize: 14 }, { name: 'amount_numbers', x: 600, y: 120, width: 100, fontSize: 14 }, { name: 'amount_words', x: 70, y: 150, width: 400, fontSize: 12 }, { name: 'date', x: 500, y: 80, width: 100, fontSize: 12 }, { name: 'check_number', x: 650, y: 80, width: 80, fontSize: 12 }, { name: 'memo', x: 70, y: 180, width: 200, fontSize: 12 }, { name: 'signature', x: 450, y: 220, width: 200, fontSize: 12 }], security: { watermark: true, micrFont: true, microprint: true, pattern: 'geometric' } };
         else return res.status(404).json({ success: false, error: 'Template not found' });
@@ -113,13 +113,13 @@ app.post('/api/generate-pdf', authenticateToken, async (req: any, res: Response)
     } catch (error) { console.error('PDF generation error:', error); res.status(500).json({ success: false, error: 'Failed to generate PDF' }); }
 });
 
-app.post('/api/save-template', authenticateToken, (req: any, res: Response) => {
+app.post('/api/save-template', authenticateToken, async (req: any, res: Response) => {
     const { templateData } = req.body || {};
     if (!templateData || typeof templateData !== 'object') return res.status(400).json({ success: false, error: 'templateData is required' });
     const userId = req.user?.id;
     const templateId = `custom_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     try {
-        db.prepare('INSERT INTO templates (id, name, data, user_id) VALUES (?, ?, ?, ?)').run(templateId, templateData.name || 'Untitled Template', JSON.stringify(templateData), userId);
+        await db.prepare('INSERT INTO templates (id, name, data, user_id) VALUES (?, ?, ?, ?)').run(templateId, templateData.name || 'Untitled Template', JSON.stringify(templateData), userId);
         res.json({ success: true, templateId, message: 'Template saved successfully' });
     } catch (error) { console.error('Template Save Error:', error); res.status(500).json({ success: false, error: 'Failed to save template' }); }
 });
@@ -143,12 +143,12 @@ app.post('/api/auth/register', rateLimitAuth, async (req: Request, res: Response
         const { email, password } = req.body || {};
         if (typeof email !== 'string' || !EMAIL_RE.test(email)) return res.status(400).json({ success: false, error: 'A valid email is required' });
         if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
-        const existing: any = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        const existing: any = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
         if (existing) return res.status(409).json({ success: false, error: 'An account with this email already exists' });
         const hashedPassword = await bcrypt.hash(password, 10);
         const adminEmails = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
         const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
-        const info = db.prepare('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)').run(email, hashedPassword, role);
+        const info = await db.prepare('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)').run(email, hashedPassword, role);
         const user = { id: info.lastInsertRowid, email, role };
         const token = generateToken(user);
         setAuthCookie(res, token);
@@ -160,10 +160,10 @@ app.post('/api/auth/login', rateLimitAuth, async (req: Request, res: Response) =
     try {
         const { email, password } = req.body || {};
         if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) return res.status(400).json({ success: false, error: 'Email and password are required' });
-        const user: any = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        const user: any = await db.prepare('SELECT * FROM users WHERE email = ?').get(email);
         if (user && await bcrypt.compare(password, user.password_hash)) {
             const adminEmails = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-            if (adminEmails.includes(user.email.toLowerCase()) && user.role !== 'admin') { db.prepare('UPDATE users SET role = ? WHERE id = ?').run('admin', user.id); user.role = 'admin'; }
+            if (adminEmails.includes(user.email.toLowerCase()) && user.role !== 'admin') { await db.prepare('UPDATE users SET role = ? WHERE id = ?').run('admin', user.id); user.role = 'admin'; }
             const token = generateToken({ id: user.id, email: user.email, role: user.role });
             setAuthCookie(res, token);
             res.json({ success: true, token, user: { id: user.id, email: user.email, role: user.role } });
@@ -184,7 +184,7 @@ app.post('/api/verify/start', authenticateToken, (req: Request, res: Response) =
 app.post('/api/verify/biometrics', authenticateToken, upload.fields([{ name: 'idImage', maxCount: 1 }, { name: 'selfieImage', maxCount: 1 }]), (req: Request, res: Response) => depositController.submitBiometrics(req, res));
 app.post('/api/payments/ach', authenticateToken, (req: Request, res: Response) => paymentController.submitDirectDeposit(req, res));
 
-TaxController.seedTemplates();
+TaxController.seedTemplates().catch((err) => console.error('Tax template seeding failed:', err));
 app.get('/api/admin/stats', authenticateToken, requireAdmin, (req: Request, res: Response) => adminController.getSystemStats(req, res));
 app.get('/api/admin/verifications', authenticateToken, requireAdmin, (req: Request, res: Response) => adminController.getVerifications(req, res));
 app.get('/api/admin/ach-batches', authenticateToken, requireAdmin, (req: Request, res: Response) => adminController.getACHBatches(req, res));
@@ -193,36 +193,36 @@ app.get('/api/tax/documents/:userId', authenticateToken, (req: Request, res: Res
 app.post('/api/tax/documents', authenticateToken, (req: Request, res: Response) => taxController.saveDocument(req, res));
 app.put('/api/tax/documents/:id', authenticateToken, (req: Request, res: Response) => taxController.updateDocument(req, res));
 
-app.get('/api/invoices', authenticateToken, (req: any, res: Response) => {
+app.get('/api/invoices', authenticateToken, async (req: any, res: Response) => {
     try {
-        const rows = db.prepare('SELECT * FROM invoices ORDER BY created_at DESC').all();
+        const rows = await db.prepare('SELECT * FROM invoices ORDER BY created_at DESC').all();
         const invoices = rows.map((r: any) => ({ ...r, items: JSON.parse(r.items || '[]'), payout_details: JSON.parse(r.payout_details || '{}'), trial_deposits: JSON.parse(r.trial_deposits || '{}') }));
         res.json({ success: true, invoices });
     } catch (err: any) { console.error('Fetch Invoices Error:', err); res.status(500).json({ success: false, error: 'Failed to retrieve invoices' }); }
 });
 
-app.post('/api/invoices', authenticateToken, (req: any, res: Response) => {
+app.post('/api/invoices', authenticateToken, async (req: any, res: Response) => {
     try {
         const { clientName, clientEmail, amount, currency = 'USD', items = [], payoutDestination = 'RECEIVER_BANK', payoutDetails = {}, notes = '' } = req.body;
         if (!clientName || !clientEmail || !amount || Number(amount) <= 0) return res.status(400).json({ success: false, error: 'Client name, client email, and positive amount are required' });
         const invoiceId = `INV-${Date.now().toString().slice(-6)}`;
-        db.prepare(`INSERT INTO invoices (id, merchant_id, client_name, client_email, amount, currency, status, items, payout_destination, payout_details, notes) VALUES (?, ?, ?, ?, ?, ?, 'SENT', ?, ?, ?, ?)`).run(invoiceId, String(req.user?.id || 'MERCHANT-1'), clientName, clientEmail, Number(amount), currency, JSON.stringify(items), payoutDestination, JSON.stringify(payoutDetails), notes);
+        await db.prepare(`INSERT INTO invoices (id, merchant_id, client_name, client_email, amount, currency, status, items, payout_destination, payout_details, notes) VALUES (?, ?, ?, ?, ?, ?, 'SENT', ?, ?, ?, ?)`).run(invoiceId, String(req.user?.id || 'MERCHANT-1'), clientName, clientEmail, Number(amount), currency, JSON.stringify(items), payoutDestination, JSON.stringify(payoutDetails), notes);
         res.json({ success: true, invoice: { id: invoiceId, clientName, clientEmail, amount: Number(amount), currency, status: 'SENT', payoutDestination } });
     } catch (err: any) { console.error('Create Invoice Error:', err); res.status(500).json({ success: false, error: 'Failed to create invoice' }); }
 });
 
-app.get('/api/invoices/:id', (req: Request, res: Response) => {
+app.get('/api/invoices/:id', async (req: Request, res: Response) => {
     try {
-        const row: any = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
+        const row: any = await db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
         if (!row) return res.status(404).json({ success: false, error: 'Invoice not found' });
         res.json({ success: true, invoice: { ...row, items: JSON.parse(row.items || '[]'), payout_details: JSON.parse(row.payout_details || '{}'), trial_deposits: JSON.parse(row.trial_deposits || '{}') } });
     } catch (err: any) { res.status(500).json({ success: false, error: 'Failed to fetch invoice details' }); }
 });
 
-app.post('/api/invoices/:id/pay', (req: Request, res: Response) => {
+app.post('/api/invoices/:id/pay', async (req: Request, res: Response) => {
     try {
         const invoiceId = req.params.id;
-        const row: any = db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoiceId);
+        const row: any = await db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoiceId);
         if (!row) return res.status(404).json({ success: false, error: 'Invoice not found' });
         const { paymentMethod, paymentData } = req.body;
 
@@ -230,7 +230,7 @@ app.post('/api/invoices/:id/pay', (req: Request, res: Response) => {
             const { cardNumber } = paymentData || {};
             const cleanCard = String(cardNumber || '').replace(/\D/g, '');
             if (cleanCard.length < 13 || cleanCard.length > 19) return res.status(400).json({ success: false, error: 'Invalid card number' });
-            db.prepare('UPDATE invoices SET status = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?').run('PAID', 'CARD', invoiceId);
+            await db.prepare('UPDATE invoices SET status = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?').run('PAID', 'CARD', invoiceId);
             return res.json({ success: true, status: 'PAID', transactionId: `TXN-CARD-${Date.now()}`, message: 'Payment successfully processed via Card gateway' });
         }
 
@@ -246,7 +246,7 @@ app.post('/api/invoices/:id/pay', (req: Request, res: Response) => {
             const dep1 = (Math.floor(Math.random() * 80 + 10) / 100);
             const dep2 = (Math.floor(Math.random() * 80 + 10) / 100);
             const trialData = { routingNumber: cleanRouting, accountNumberMasked: `******${cleanAccount.slice(-4)}`, deposit1: dep1, deposit2: dep2, verified: false, sentAt: new Date().toISOString() };
-            db.prepare('UPDATE invoices SET status = ?, payment_method = ?, trial_deposits = ? WHERE id = ?').run('TRIAL_PENDING', 'MANUAL_ACH', JSON.stringify(trialData), invoiceId);
+            await db.prepare('UPDATE invoices SET status = ?, payment_method = ?, trial_deposits = ? WHERE id = ?').run('TRIAL_PENDING', 'MANUAL_ACH', JSON.stringify(trialData), invoiceId);
             return res.json({ success: true, status: 'TRIAL_PENDING', message: `Two micro-deposits have been dispatched to your bank account ending in ${cleanAccount.slice(-4)}.`, trialInfo: { deposit1Hint: dep1, deposit2Hint: dep2, accountEnding: cleanAccount.slice(-4) } });
         }
 
@@ -258,7 +258,7 @@ app.post('/api/invoices/:id/pay', (req: Request, res: Response) => {
             const match2 = Math.abs(Number(deposit2) - Number(existingTrials.deposit2)) < 0.001;
             if (!match1 || !match2) return res.status(400).json({ success: false, error: 'Trial deposit amounts do not match bank records.' });
             existingTrials.verified = true; existingTrials.verifiedAt = new Date().toISOString();
-            db.prepare('UPDATE invoices SET status = ?, paid_at = CURRENT_TIMESTAMP, trial_deposits = ? WHERE id = ?').run('PAID', JSON.stringify(existingTrials), invoiceId);
+            await db.prepare('UPDATE invoices SET status = ?, paid_at = CURRENT_TIMESTAMP, trial_deposits = ? WHERE id = ?').run('PAID', JSON.stringify(existingTrials), invoiceId);
             return res.json({ success: true, status: 'PAID', message: 'Bank account verified successfully.' });
         }
 
