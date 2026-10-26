@@ -80,7 +80,6 @@ export function useHistorySnapshots(opts: HistorySnapshotOptions): HistorySnapsh
             }
         } catch { /* storage unavailable or corrupt: start from defaults */ }
         presentRef.current = initial;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Record design changes onto the undo stack (debounced so a drag or
@@ -108,7 +107,6 @@ export function useHistorySnapshots(opts: HistorySnapshotOptions): HistorySnapsh
             setDirty(true);
         }, opts.debounceMs ?? 350);
         return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, opts.watch);
 
     const applySnap = useCallback((snap: any) => {
