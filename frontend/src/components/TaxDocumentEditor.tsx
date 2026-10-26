@@ -221,10 +221,22 @@ export const TaxDocumentEditor: React.FC<TaxDocumentEditorProps> = ({
     const userId = 'me';
 
     const handleDeliver = async (method: string, options: CheckDeliveryOptions) => {
-        console.log(`Delivering tax doc via ${method}`, options);
-        await saveToDB('SENT');
         setIsDeliveryOpen(false);
-        alert(`Your tax document has been sent via ${method}!`);
+        if (method === 'download') {
+            // Save a copy to history; the editor's own print produces the file.
+            await saveToDB('DRAFT');
+            return;
+        }
+        if (method === 'email') {
+            await saveToDB('DRAFT');
+            const subject = encodeURIComponent('Tax document from OmniCheck');
+            const body = encodeURIComponent('Your tax document is saved in OmniCheck Studio (Tax Documents > History). Print or save it from the editor and attach it to this email before sending.');
+            window.location.href = `mailto:${options.email || ''}?subject=${subject}&body=${body}`;
+            return;
+        }
+        // Postal / ACH / SMS / fax channels need providers that are not
+        // connected yet - never claim a document was sent when it was not.
+        alert('That delivery channel is not connected yet (it needs a postal, ACH, SMS or fax provider). Nothing was sent or charged, and no bank or address details were submitted.');
     };
 
 

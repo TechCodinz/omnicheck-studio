@@ -3483,14 +3483,45 @@ const CheckBuilder: React.FC = () => {
         };
     };
 
-    const handleEmailToPayee = () => {
+    const handleEmailToPayee = (recipient?: string) => {
+        const to = typeof recipient === 'string' ? recipient : '';
         const amount = Number(checkData.amount || 0).toFixed(2);
         const subjectText = `Check #${checkData.checkNumber} - $${amount}`;
         const bodyText = `Hello ${checkData.payeeName || 'Payee'},\n\nA check has been prepared for you:\n\nCheck #: ${checkData.checkNumber}\nAmount: $${amount}\nDate: ${checkData.date}\nBank: ${checkData.bankName}\n\n(Attach the exported check PDF or image to this email before sending.)`;
         try { navigator.clipboard?.writeText(`Subject: ${subjectText}\n\n${bodyText}`); } catch (err) { /* clipboard unavailable */ }
-        window.location.href = `mailto:?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+        window.location.href = `mailto:${to}?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
         window.setTimeout(() => alert('Your email app should now open with the check details pre-filled.\n\nIf nothing opened, the same draft was copied to your clipboard - paste it into any email.'), 400);
     };
+
+    // Executes Send Check delivery requests from the app shell's
+    // DeliveryModal. Only channels with a real action behind them are
+    // executed here (PDF download, email draft). Provider-dependent
+    // channels (postal mail, ACH, SMS, fax) are explained in the modal
+    // itself and rerouted to the PDF - if one somehow arrives here, say
+    // so plainly instead of pretending it was sent.
+    const executeDelivery = (method: string, options: any) => {
+        if (method === 'download') { handleDownloadPDF(); return; }
+        if (method === 'email') { handleEmailToPayee(typeof options?.email === 'string' ? options.email : undefined); return; }
+        alert('That delivery channel is not connected yet - nothing was sent or charged. Download the PDF instead to send the check today.');
+    };
+    const executeDeliveryRef = useRef(executeDelivery);
+    executeDeliveryRef.current = executeDelivery;
+    useEffect(() => {
+        const run = () => {
+            let raw: string | null = null;
+            try { raw = sessionStorage.getItem('oc_pending_delivery'); } catch { /* ignore */ }
+            if (!raw) return;
+            try { sessionStorage.removeItem('oc_pending_delivery'); } catch { /* ignore */ }
+            try {
+                const req = JSON.parse(raw);
+                if (!req || Date.now() - (req.at || 0) > 60000) return;
+                executeDeliveryRef.current(req.method, req.options || {});
+            } catch { /* ignore malformed request */ }
+        };
+        run();
+        window.addEventListener('oc:deliver', run);
+        return () => window.removeEventListener('oc:deliver', run);
+    }, []);
 
     const handleAddText = () => {
         setCustomObjects(prev => [...prev, { id: `uctx-${Date.now()}`, kind: 'text', text: 'New Text', left: 110, top: 110 }]);
@@ -5076,7 +5107,7 @@ const CheckBuilder: React.FC = () => {
                                 <button onClick={handleDownloadPDF} style={dropdownItemStyle}>
                                     📄 Export Canvas Preview PDF (Instant)
                                 </button>
-                                <button onClick={handleEmailToPayee} style={dropdownItemStyle}>📧 Email to Payee</button>
+                                <button onClick={() => handleEmailToPayee()} style={dropdownItemStyle}>📧 Email to Payee</button>
                                 <button onClick={handleDirectPrint} style={dropdownItemStyle}>🖨️ Direct Print (Pro)</button>
                                 <button onClick={handleGenerateMobileShot} style={{ ...dropdownItemStyle, color: '#F97316', fontWeight: 600 }}>
                                     📸 Mobile Deposit Shot (Final)

@@ -328,10 +328,22 @@ const AppContent: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // The DeliveryModal lives in the shell, but the live check and the real
+  // export/email actions live in the studio (CheckBuilder). Persist the
+  // request, route to the studio, and signal it: CheckBuilder consumes the
+  // request on mount, or immediately via the event if already mounted.
   const handleDelivery = useCallback((method: string, options: CheckDeliveryOptions) => {
-    console.log('Delivering via:', method, options);
     setDeliveryModalOpen(false);
-  }, []);
+    try { sessionStorage.setItem('oc_pending_delivery', JSON.stringify({ method, options, at: Date.now() })); } catch { /* storage unavailable */ }
+    if (location.pathname !== '/') {
+      navigate('/');
+    } else {
+      window.dispatchEvent(new CustomEvent('oc:deliver'));
+    }
+  }, [location.pathname, navigate]);
 
   const sidebarWidth = isMobile ? 0 : (sidebarCollapsed ? 92 : 252);
 

@@ -15,7 +15,19 @@ interface DeliveryMethod {
     description: string;
     cost: number;
     time: string;
+    unavailable?: string;
 }
+
+// Channels that need a third-party provider OmniCheck does not have
+// connected yet. They are shown honestly with the reason and a working
+// alternative (the PDF), never as a silent dead end or a fake success.
+const PROVIDER_NOTES: Record<string, string> = {
+    mail: 'Physical mail needs a connected postal provider (printing + postage). OmniCheck does not have one yet, so nothing can be mailed or charged from here. Working alternative: download the print-ready PDF and mail it yourself today.',
+    priority_mail: 'Priority mail needs a connected postal provider (printing + postage). OmniCheck does not have one yet, so nothing can be mailed or charged from here. Working alternative: download the print-ready PDF and send it by any courier today.',
+    direct_deposit: 'Direct Deposit moves real money. It needs a licensed ACH origination partner and a verified business account, which are not connected yet - so nothing can be submitted from here. Never enter bank details into an unconnected channel.',
+    sms: 'SMS delivery needs a connected SMS provider to send the download link. OmniCheck does not have one yet. Working alternative: download the PDF and share it from your own messaging app.',
+    fax: 'Fax delivery needs a connected fax provider. OmniCheck does not have one yet. Working alternative: download the PDF and send it through any fax app or service.'
+};
 
 interface DeliveryModalProps {
     isOpen: boolean;
@@ -33,16 +45,22 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onDelive
     const deliveryMethods: DeliveryMethod[] = [
         { id: 'download', name: 'Download PDF', icon: '📥', description: 'Download to your device', cost: 0, time: 'Instant' },
         { id: 'email', name: 'Send via Email', icon: '📧', description: 'Send to any email address', cost: 0, time: 'Instant' },
-        { id: 'mail', name: 'Physical Mail', icon: '📮', description: 'Print and mail to address', cost: 2.99, time: '3-5 days' },
-        { id: 'priority_mail', name: 'Priority Mail', icon: '📦', description: 'Express physical delivery', cost: 8.99, time: '1-2 days' },
-        { id: 'direct_deposit', name: 'Direct Deposit', icon: '🏦', description: 'ACH direct deposit', cost: 0.50, time: '1-3 days' },
-        { id: 'sms', name: 'SMS Link', icon: '💬', description: 'Send download link via SMS', cost: 0.10, time: 'Instant' },
-        { id: 'fax', name: 'Send via Fax', icon: '📠', description: 'Fax to recipient', cost: 0.50, time: 'Instant' },
+        { id: 'mail', name: 'Physical Mail', icon: '📮', description: 'Print and mail to address', cost: 2.99, time: '3-5 days', unavailable: 'Postal provider not connected' },
+        { id: 'priority_mail', name: 'Priority Mail', icon: '📦', description: 'Express physical delivery', cost: 8.99, time: '1-2 days', unavailable: 'Postal provider not connected' },
+        { id: 'direct_deposit', name: 'Direct Deposit', icon: '🏦', description: 'ACH direct deposit', cost: 0.50, time: '1-3 days', unavailable: 'ACH partner not connected' },
+        { id: 'sms', name: 'SMS Link', icon: '💬', description: 'Send download link via SMS', cost: 0.10, time: 'Instant', unavailable: 'SMS provider not connected' },
+        { id: 'fax', name: 'Send via Fax', icon: '📠', description: 'Fax to recipient', cost: 0.50, time: 'Instant', unavailable: 'Fax provider not connected' },
     ];
 
     if (!isOpen) return null;
 
+    const providerNote = PROVIDER_NOTES[selectedMethod];
+
     const handleSubmit = () => {
+        if (selectedMethod === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            alert('Enter a valid recipient email address first.');
+            return;
+        }
         const options: CheckDeliveryOptions = {};
         if (selectedMethod === 'email') options.email = email;
         if (selectedMethod === 'mail' || selectedMethod === 'priority_mail') options.mail = mailAddress;
@@ -92,9 +110,18 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onDelive
                                         {method.cost === 0 ? 'FREE' : `$${method.cost.toFixed(2)}`}
                                     </span>
                                 </div>
+                                {method.unavailable && (
+                                    <div style={{ color: '#FBBF24', fontSize: '10px', marginTop: '6px' }}>⚠ {method.unavailable}</div>
+                                )}
                             </button>
                         ))}
                     </div>
+
+                    {providerNote ? (
+                        <div style={{ marginBottom: '16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '8px', padding: '12px 14px', color: '#FDE68A', fontSize: '12.5px', lineHeight: 1.55 }}>
+                            {providerNote}
+                        </div>
+                    ) : (<>
 
                     {selectedMethod === 'email' && (
                         <div style={{ marginBottom: '16px' }}>
@@ -144,18 +171,28 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onDelive
                                 style={{ width: '100%', padding: '12px', background: '#374151', border: '1px solid #4B5563', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
                         </div>
                     )}
+                    </>)}
                 </div>
 
                 <div style={{ padding: '20px 24px', borderTop: '1px solid #374151', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                     <button onClick={onClose} style={{ padding: '12px 24px', background: '#374151', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px' }}>
                         Cancel
                     </button>
-                    <button onClick={handleSubmit} style={{
-                        padding: '12px 24px', background: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
-                        border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '600'
-                    }}>
-                        📤 Send Now
-                    </button>
+                    {providerNote ? (
+                        <button onClick={() => onDeliver('download', {})} style={{
+                            padding: '12px 24px', background: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
+                            border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '600'
+                        }}>
+                            📥 Download the PDF Instead
+                        </button>
+                    ) : (
+                        <button onClick={handleSubmit} style={{
+                            padding: '12px 24px', background: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
+                            border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: '600'
+                        }}>
+                            📤 Send Now
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
