@@ -296,6 +296,21 @@ export class MICRComplianceEngine {
      * Comprehensive Zero-Decline Bank Acceptance Evaluation
      * Evaluates all Federal Reserve, Check 21, and UCC § 3-114 criteria
      */
+    /**
+     * Derives the ABA fractional routing form from a 9-digit routing number.
+     * Fraction = institution identifier (digits 5-8) / Federal Reserve routing
+     * symbol (digits 1-4), leading zeros suppressed as printed on real checks.
+     * The legacy city/state prefix (before the dash) is bank-specific and is
+     * not derivable from the routing number, so it is not fabricated here.
+     */
+    static deriveFractionalRouting(routing: string): string {
+        const clean = String(routing || '').replace(/\D/g, '');
+        if (clean.length !== 9) return '';
+        const institution = String(parseInt(clean.slice(4, 8), 10));
+        const symbol = String(parseInt(clean.slice(0, 4), 10));
+        return `${institution}/${symbol}`;
+    }
+
     static evaluateZeroDeclineCompliance(checkData: {
         routingNumber?: string;
         accountNumber?: string;
@@ -305,6 +320,8 @@ export class MICRComplianceEngine {
         date?: string;
         amountWords?: string;
         hasSignature?: boolean;
+        fractionalRouting?: string;
+        micrInBand?: boolean;
     }): {
         score: number;
         is100PercentCompliant: boolean;
@@ -386,20 +403,54 @@ export class MICRComplianceEngine {
             message: dateMsg
         });
 
-        // 7. Clear Band & Magnetic Specifications
+        // 7. MICR Clear Band placement (measured from the live canvas by the caller)
         checks.push({
             id: 'clearBand',
             label: 'ANSI X9.27 0.625" MICR Clear Band',
-            passed: true,
-            message: 'Unprinted white margin enforced at bottom edge'
+            passed: checkData.micrInBand === true,
+            message: checkData.micrInBand === true
+                ? 'MICR line sits inside the bottom clear band'
+                : (checkData.micrInBand === false
+                    ? 'MICR line is outside the clear band - it must sit in the bottom strip'
+                    : 'MICR placement not verified yet')
         });
 
-        // 8. Regulation CC Restrictive Endorsement Ready
+        // 8. Fractional routing consistency (the printed fraction must derive from the routing number)
+        const derivedFractional = this.deriveFractionalRouting(routing);
+        const printedFractional = String(checkData.fractionalRouting || '').trim();
+        const normalizeFraction = (s: string) => {
+            const core = s.includes('-') ? s.slice(s.lastIndexOf('-') + 1) : s;
+            const parts = core.replace(/[^0-9/]/g, '').split('/');
+            if (parts.length !== 2) return '';
+            return parts.map(p => String(parseInt(p || '0', 10))).join('/');
+        };
+        const fractionalOk = Boolean(derivedFractional) && normalizeFraction(printedFractional) === normalizeFraction(derivedFractional);
         checks.push({
-            id: 'endorsement',
-            label: 'Fed Reg CC Restrictive Endorsement',
-            passed: true,
-            message: '"For Mobile Deposit Only" endorsement ready'
+            id: 'fractional',
+            label: 'Fractional Routing Consistency',
+            passed: fractionalOk,
+            message: !derivedFractional
+                ? 'Enter a valid 9-digit routing number to derive the fraction'
+                : (fractionalOk
+                    ? `Printed ${printedFractional} matches the routing number`
+                    : `Printed "${printedFractional || '(blank)'}" does not match routing-derived "${derivedFractional}"`)
+        });
+
+        // 9. Signature present (unsigned checks are returned unpaid)
+        checks.push({
+            id: 'signature',
+            label: 'Authorized Signature Present',
+            passed: checkData.hasSignature === true,
+            message: checkData.hasSignature ? 'Signature is on the signature line' : 'No signature on the check'
+        });
+
+        // 10. Legal amount in words (UCC 3-114: words control over figures)
+        const words = String(checkData.amountWords || '').trim();
+        checks.push({
+            id: 'amountWords',
+            label: 'Legal Amount in Words',
+            passed: amountValid && words.length > 3,
+            message: amountValid && words.length > 3 ? words : 'Written (legal) amount is missing'
         });
 
         const passedCount = checks.filter(c => c.passed).length;

@@ -887,7 +887,7 @@ const CheckBuilder: React.FC = () => {
     // Form Data State
     const [checkData, setCheckData] = useState({
         checkNumber: '9065',
-        fractionalRouting: '12-30/21',
+        fractionalRouting: '21/1220',
         date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
         amount: 1234.56,
         payeeName: '',
@@ -955,6 +955,8 @@ const CheckBuilder: React.FC = () => {
     const [handwritingColor, setHandwritingColor] = useState('#003366'); // Default Blue
     const [textureOpacity, setTextureOpacity] = useState(1.0);
     const [securityFeatures, setSecurityFeatures] = useState(SECURITY_FEATURES);
+    // Fractional routing auto-derives from the routing number until the user edits it by hand
+    const fractionalAutoRef = useRef(true);
     const [mobileBackground, setMobileBackground] = useState<'dark' | 'wood' | 'granite' | 'office'>('dark');
     const [showMicrBand, setShowMicrBand] = useState(true); // Default: show white band
     const [showAmountBorder, setShowAmountBorder] = useState(true); // Default: show amount box border
@@ -3097,6 +3099,10 @@ const CheckBuilder: React.FC = () => {
                 hasControls: true,
                 lockRotation: true
             } as any);
+            // STANDARD ENFORCEMENT: the MICR line stays draggable, but never out of
+            // the ANSI clear band - out-of-band MICR is the top machine-reject cause.
+            micrObject.top = Math.min(Math.max(micrObject.top ?? (H - 50), H - 62), H - 30);
+            micrObject.left = Math.min(Math.max(micrObject.left ?? 60, 30), 150);
             c.add(micrObject);
 
             // WATERMARK: High-Fidelity & Draggable
@@ -3323,6 +3329,10 @@ const CheckBuilder: React.FC = () => {
             // Auto-fill bank details if routing number is provided
             if (field === 'routingNumber') {
                 const routing = value.toString().replace(/\D/g, '').trim();
+                if (fractionalAutoRef.current) {
+                    const derived = MICRComplianceEngine.deriveFractionalRouting(routing);
+                    if (derived) newData.fractionalRouting = derived;
+                }
                 if (routing.length >= 9) {
                     const bankInfo: Record<string, { name: string, address: string, template?: string }> = {
                         '021000021': { name: 'JPMorgan Chase Bank, N.A.', address: '270 Park Ave, New York, NY 10017', template: 'CHASE' },
@@ -3356,6 +3366,7 @@ const CheckBuilder: React.FC = () => {
     // Generate/Download check
     const handleGenerate = () => {
         if (fabricCanvas) {
+            if (!runBankAcceptanceGate()) return;
             const dataUrl = fabricCanvas.toDataURL({ format: 'png', multiplier: 2 });
             const link = document.createElement('a');
             link.download = `check_${checkData.checkNumber}.png`;
@@ -3397,6 +3408,33 @@ const CheckBuilder: React.FC = () => {
         console.log("AI Design Generated:", result.meta.explanation);
     };
 
+    // BANK ACCEPTANCE GATE - every export runs the same compliance audit the
+    // widget shows. Anything short of 100% lists the exact decline risks and
+    // asks the owner to confirm before any export credit is consumed.
+    const runBankAcceptanceGate = (): boolean => {
+        const H = checkDimensions.height;
+        const micrObj: any = (fabricCanvas as any)?.getObjects?.().find((o: any) => o.id === 'micrLine');
+        const micrTop = micrObj?.top ?? objectPositionsRef.current.micrLine?.top;
+        const amountNum = typeof checkData.amount === 'number' ? checkData.amount : parseFloat(String(checkData.amount).replace(/[^0-9.]/g, '')) || 0;
+        const compliance = MICRComplianceEngine.evaluateZeroDeclineCompliance({
+            routingNumber: checkData.routingNumber,
+            accountNumber: checkData.accountNumber,
+            checkNumber: checkData.checkNumber,
+            amount: checkData.amount,
+            payeeName: checkData.payeeName,
+            date: checkData.date,
+            fractionalRouting: checkData.fractionalRouting,
+            hasSignature: Boolean(signatureImage) || Boolean(signatureStyle && signatureStyle !== 'none'),
+            amountWords: convertToWords(amountNum),
+            micrInBand: typeof micrTop === 'number' ? (micrTop >= H - 67 && micrTop <= H - 24) : undefined
+        });
+        if (compliance.is100PercentCompliant) return true;
+        const failed = compliance.checks.filter(c => !c.passed);
+        return window.confirm(
+            `BANK ACCEPTANCE CHECK - ${compliance.score}%\n\nThis check may be DECLINED for:\n${failed.map(c => `- ${c.label}: ${c.message}`).join('\n')}\n\nFix these in the editor for a fully standard-compliant check. Export anyway only if you know the receiving bank accepts it.`
+        );
+    };
+
     const handleDirectPrint = async () => {
         if (!fabricCanvas) return;
         // Same license gate as the PDF export
@@ -3408,6 +3446,7 @@ const CheckBuilder: React.FC = () => {
             alert(`\u26a0\ufe0f You\'ve reached your ${currentPlan.name} plan limit (${currentPlan.checksPerMonth} exports/month).\n\nUpgrade to export more.`);
             return;
         }
+        if (!runBankAcceptanceGate()) return;
         const frontData = fabricCanvas.toDataURL({ format: 'png', multiplier: 4 });
         const backData = await captureBackForExport();
         if (!frontData || !backData || await isBlankCapture(backData)) {
@@ -3781,6 +3820,7 @@ const CheckBuilder: React.FC = () => {
             alert(`\u26a0\ufe0f You\'ve reached your ${currentPlan.name} plan limit (${currentPlan.checksPerMonth} exports/month).\n\nUpgrade to export more.`);
             return;
         }
+        if (!runBankAcceptanceGate()) return;
         try {
             // 1. Capture Front (400 DPI at print size, lossless PNG)
             const frontData = fabricCanvas.toDataURL({ format: 'png', multiplier: 4 });
@@ -3840,6 +3880,13 @@ const CheckBuilder: React.FC = () => {
 
             if (routingClean.length !== 9) {
                 alert(`⚠️ Routing number must be exactly 9 digits (currently ${routingClean.length}).`);
+                setIsExportingServerPdf(false);
+                return;
+            }
+
+            const routingCheck = MICRComplianceEngine.validateRoutingNumber(routingClean);
+            if (!routingCheck.valid) {
+                alert(`⚠️ ${routingCheck.error || 'Invalid routing number'} - banks reject checks whose routing number fails the ABA checksum.`);
                 setIsExportingServerPdf(false);
                 return;
             }
@@ -4622,7 +4669,16 @@ const CheckBuilder: React.FC = () => {
                                         <input
                                             style={{ ...inputStyle, borderColor: isValidRouting(checkData.routingNumber) ? '#ddd' : '#e74c3c' }}
                                             value={checkData.routingNumber}
-                                            onChange={(e) => setCheckData({ ...checkData, routingNumber: e.target.value })}
+                                            onChange={(e) => {
+                                                const routingNumber = e.target.value;
+                                                setCheckData(prev => ({
+                                                    ...prev,
+                                                    routingNumber,
+                                                    fractionalRouting: fractionalAutoRef.current
+                                                        ? (MICRComplianceEngine.deriveFractionalRouting(routingNumber) || prev.fractionalRouting)
+                                                        : prev.fractionalRouting
+                                                }));
+                                            }}
                                         />
                                         {!isValidRouting(checkData.routingNumber) && (
                                             <div style={{ fontSize: '8px', color: '#e74c3c', marginTop: '2px' }}>Invalid Mod-10 Check Digit</div>
@@ -4642,10 +4698,17 @@ const CheckBuilder: React.FC = () => {
                                         <label style={labelStyle}>Fractional Routing</label>
                                         <input
                                             style={inputStyle}
-                                            placeholder="e.g. 12-30/123"
+                                            placeholder="Auto from routing (e.g. 21/1220)"
                                             value={checkData.fractionalRouting || ''}
-                                            onChange={(e) => setCheckData({ ...checkData, fractionalRouting: e.target.value })}
+                                            onChange={(e) => { fractionalAutoRef.current = false; setCheckData({ ...checkData, fractionalRouting: e.target.value }); }}
                                         />
+                                        {!fractionalAutoRef.current && (
+                                            <button type="button"
+                                                onClick={() => { fractionalAutoRef.current = true; setCheckData(prev => ({ ...prev, fractionalRouting: MICRComplianceEngine.deriveFractionalRouting(prev.routingNumber) || prev.fractionalRouting })); }}
+                                                style={{ marginTop: 4, fontSize: 10, background: 'none', border: 'none', color: '#7dd3fc', cursor: 'pointer', padding: 0 }}>
+                                                Re-derive from routing number
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <div style={inputGroupStyle}>
@@ -5054,7 +5117,16 @@ const CheckBuilder: React.FC = () => {
                             checkNumber: checkData.checkNumber,
                             amount: checkData.amount,
                             payeeName: checkData.payeeName,
-                            date: checkData.date
+                            date: checkData.date,
+                            fractionalRouting: checkData.fractionalRouting,
+                            hasSignature: Boolean(signatureImage) || Boolean(signatureStyle && signatureStyle !== 'none'),
+                            amountWords: convertToWords(typeof checkData.amount === 'number' ? checkData.amount : parseFloat(String(checkData.amount).replace(/[^0-9.]/g, '')) || 0),
+                            micrInBand: (() => {
+                                const H = checkDimensions.height;
+                                const obj: any = (fabricCanvas as any)?.getObjects?.().find((o: any) => o.id === 'micrLine');
+                                const top = obj?.top ?? objectPositionsRef.current.micrLine?.top;
+                                return typeof top === 'number' ? (top >= H - 67 && top <= H - 24) : undefined;
+                            })()
                         });
 
                         return (
@@ -5113,6 +5185,9 @@ const CheckBuilder: React.FC = () => {
                                                     </div>
                                                 </div>
                                             ))}
+                                        </div>
+                                        <div style={{ marginTop: 8, borderTop: '1px solid #1E293B', paddingTop: 6, fontSize: '10px', color: '#94A3B8', lineHeight: 1.4 }}>
+                                            Print at 100% scale. Counter/ATM deposits: MICR toner + check stock. Mobile deposit: this 400 DPI design works on plain paper too - the standard MICR line, clear band and security features are in the file.
                                         </div>
                                     </div>
                                 )}
