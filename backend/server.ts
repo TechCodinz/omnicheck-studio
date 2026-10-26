@@ -30,6 +30,10 @@ const adminController = new AdminController();
 const taxController = new TaxController();
 
 const app = express();
+// Behind Render's proxy every request arrives with X-Forwarded-For;
+// without this, express-rate-limit keys all visitors to the proxy's
+// address (one shared bucket) and logs a ValidationError per burst.
+app.set('trust proxy', 1);
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: CORS_ORIGIN, methods: ["GET", "POST"], credentials: true } });
 const PORT = process.env.PORT || 3001;
