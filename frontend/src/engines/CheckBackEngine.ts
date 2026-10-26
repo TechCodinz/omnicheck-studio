@@ -19,16 +19,13 @@ export class CheckBackEngine {
         const endorsementX = width - (1.5 * 72 * scale);
 
         // Left Panel (Main Security Body - Light Blue)
-        // When the selected design carries a primary colour, the panel
-        // takes a pale tint of it, so each design's back is its own;
-        // with no design colour it stays the standard security blue.
         objects.push(new fabric.Rect({
             id: 'back-bg-left', // UNIQUE ID
             left: 0,
             top: 0,
             width: endorsementX,
             height: height,
-            fill: CheckBackEngine.paleTint(config.tint),
+            fill: '#e3f2fd',
             selectable: true, evented: true, hasControls: true, lockRotation: true
         } as any));
 
@@ -46,24 +43,6 @@ export class CheckBackEngine {
         // 1. Watermark (Horizontal Center - Draggable, Big & Bold)
         this.addHorizontalWatermark(width, height, scale, objects);
 
-        // 1b. Design identity: the bank/design name across the top of
-        // the blue field. Until now every design produced the identical
-        // back - the name was passed in and never used.
-        if (config.bankName && String(config.bankName).trim()) {
-            objects.push(new fabric.Text(String(config.bankName).toUpperCase(), {
-                id: 'back-bank-name', // UNIQUE ID
-                left: endorsementX / 2,
-                top: 14 * scale,
-                fontSize: 11 * scale,
-                fontWeight: '600',
-                fontFamily: 'Arial',
-                fill: '#2f5d7d',
-                charSpacing: 2 * scale,
-                originX: 'center',
-                selectable: true, evented: true, hasControls: true
-            } as any));
-        }
-
         // 2. Endorsement Zone (Right Side - All elements unlocked)
         this.addUnlockedEndorsementZone(width, height, scale, objects, style, depositConfig, signatureImage);
 
@@ -71,18 +50,6 @@ export class CheckBackEngine {
         this.addUnlockedSecurityBox(width, height, scale, objects);
 
         return objects;
-    }
-
-    // Mix a design colour 88% toward white: a pale security tint in the
-    // design's family. Anything that is not a #rrggbb colour falls back
-    // to the standard security blue.
-    private static paleTint(hex: any): string {
-        if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return '#e3f2fd';
-        const mix = (v: number) => Math.round(v + (255 - v) * 0.88);
-        const r = mix(parseInt(hex.slice(1, 3), 16));
-        const g = mix(parseInt(hex.slice(3, 5), 16));
-        const b = mix(parseInt(hex.slice(5, 7), 16));
-        return `rgb(${r}, ${g}, ${b})`;
     }
 
     private static addHorizontalWatermark(width: number, height: number, scale: number, objects: fabric.Object[]): void {
@@ -154,21 +121,15 @@ export class CheckBackEngine {
         } as any));
 
         // --- Signature X ---
-        // The X belongs ON the first endorsement line, at its start: the
-        // reference back (and every real check) puts it there so the
-        // signature begins on the line. It previously sat 15 units off
-        // the line's column, which read as a stray mark floating beside
-        // the signing area. The lines themselves do not move.
         const xPosX = zoneX + (zoneWidth * 0.3);
         objects.push(new fabric.Text("X", {
             id: 'endorse-x', // UNIQUE ID
-            left: xPosX,
+            left: xPosX - (15 * scale),
             top: 60 * scale,
             fontSize: 16 * scale,
             fontFamily: 'Arial',
             fill: '#000',
             angle: 90,
-            originX: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
 
@@ -281,11 +242,12 @@ export class CheckBackEngine {
     }
 
     private static addUnlockedSecurityBox(width: number, height: number, scale: number, objects: fabric.Object[]): void {
-        // The security box from the owner's reference back: a titled,
-        // bulleted list of the six standard features on an even pitch,
-        // one type size throughout, all columns centred on the box's
-        // midline, the federal Reg. C.C. line at the far edge. Frame
-        // geometry is the owner's and does not change.
+        // The security box from the reference back, arranged as a precise
+        // table: one type size throughout, names bold, every feature pair
+        // on an exact 32-unit pitch with its description 12 units after
+        // the name, all columns centred on the box's midline, even
+        // margins to the frame. (The first pass had uneven pair gaps and
+        // mixed sizes, which read as unprofessional.)
         const boxLeft = 28 * scale;
         const boxTop = 26 * scale;
         const boxW = 205 * scale;
@@ -318,26 +280,25 @@ export class CheckBackEngine {
             } as any));
         };
 
-        // Title column, as titled on the reference back
+        // Padlock certification line + alteration warning
         colText('security-header',
-            "SECURITY FEATURES",
-            20, 'bold', '#111');
+            "Padlock design is a certification mark of the Check Payment Systems Association",
+            20, 'normal', '#111');
+        colText('security-warning',
+            "Warning: Absence of the following Security Features may indicate alteration",
+            36, 'bold', '#111');
 
-        // The reference back's feature list: six short entries on an
-        // even pitch, nothing else. The previous contents (certification
-        // prose, an alteration warning and four long description
-        // paragraphs) packed the box into a dense grey block that read
-        // as scattered next to the reference's clean list.
-        const features: string[] = [
-            "Fluorescent Fiber Technology",
-            "Chemical Sensitive Paper Stock",
-            "Microprinting Along Lines (MP)",
-            "Security Screen Backdrop",
-            "Routing Number Verification",
-            "Authentic Document Watermark"
+        // Feature list: name + description, exact pitch
+        const features: Array<[string, string]> = [
+            ["MP Microprint", "Tiny type on front and back fills in to form solid lines when scanned or photocopied."],
+            ["Security Pantograph", "Copy resistant security pantograph on front of document discourages clear duplication."],
+            ["Warning Bands/MP Padlock Logos", "Warn receivers to be aware of detailed security features."],
+            ["Security Screen Backer", "\"Original Document\" text and weave pattern on back, not visible if scanned or photocopied."]
         ];
-        features.forEach((name, i) => {
-            colText(`security-feature-${i}`, `\u2022 ${name}`, 46 + (i * 22), '600', '#111');
+        features.forEach(([name, desc], i) => {
+            const nameOffset = 54 + (i * 32);
+            colText(`security-feature-${i}`, name, nameOffset, '600', '#111');
+            colText(`security-feature-desc-${i}`, desc, nameOffset + 12, 'normal', '#222');
         });
 
         // Reg. C.C. line (bottom of the box on the sample)
