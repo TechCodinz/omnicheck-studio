@@ -121,15 +121,21 @@ export class CheckBackEngine {
         } as any));
 
         // --- Signature X ---
+        // The X belongs ON the first endorsement line, at its start: the
+        // reference back (and every real check) puts it there so the
+        // signature begins on the line. It previously sat 15 units off
+        // the line's column, which read as a stray mark floating beside
+        // the signing area. The lines themselves do not move.
         const xPosX = zoneX + (zoneWidth * 0.3);
         objects.push(new fabric.Text("X", {
             id: 'endorse-x', // UNIQUE ID
-            left: xPosX - (15 * scale),
+            left: xPosX,
             top: 60 * scale,
             fontSize: 16 * scale,
             fontFamily: 'Arial',
             fill: '#000',
             angle: 90,
+            originX: 'center',
             selectable: true, evented: true, hasControls: true
         } as any));
 
@@ -242,12 +248,11 @@ export class CheckBackEngine {
     }
 
     private static addUnlockedSecurityBox(width: number, height: number, scale: number, objects: fabric.Object[]): void {
-        // The security box from the reference back, arranged as a precise
-        // table: one type size throughout, names bold, every feature pair
-        // on an exact 32-unit pitch with its description 12 units after
-        // the name, all columns centred on the box's midline, even
-        // margins to the frame. (The first pass had uneven pair gaps and
-        // mixed sizes, which read as unprofessional.)
+        // The security box from the owner's reference back: a titled,
+        // bulleted list of the six standard features on an even pitch,
+        // one type size throughout, all columns centred on the box's
+        // midline, the federal Reg. C.C. line at the far edge. Frame
+        // geometry is the owner's and does not change.
         const boxLeft = 28 * scale;
         const boxTop = 26 * scale;
         const boxW = 205 * scale;
@@ -280,25 +285,26 @@ export class CheckBackEngine {
             } as any));
         };
 
-        // Padlock certification line + alteration warning
+        // Title column, as titled on the reference back
         colText('security-header',
-            "Padlock design is a certification mark of the Check Payment Systems Association",
-            20, 'normal', '#111');
-        colText('security-warning',
-            "Warning: Absence of the following Security Features may indicate alteration",
-            36, 'bold', '#111');
+            "SECURITY FEATURES",
+            20, 'bold', '#111');
 
-        // Feature list: name + description, exact pitch
-        const features: Array<[string, string]> = [
-            ["MP Microprint", "Tiny type on front and back fills in to form solid lines when scanned or photocopied."],
-            ["Security Pantograph", "Copy resistant security pantograph on front of document discourages clear duplication."],
-            ["Warning Bands/MP Padlock Logos", "Warn receivers to be aware of detailed security features."],
-            ["Security Screen Backer", "\"Original Document\" text and weave pattern on back, not visible if scanned or photocopied."]
+        // The reference back's feature list: six short entries on an
+        // even pitch, nothing else. The previous contents (certification
+        // prose, an alteration warning and four long description
+        // paragraphs) packed the box into a dense grey block that read
+        // as scattered next to the reference's clean list.
+        const features: string[] = [
+            "Fluorescent Fiber Technology",
+            "Chemical Sensitive Paper Stock",
+            "Microprinting Along Lines (MP)",
+            "Security Screen Backdrop",
+            "Routing Number Verification",
+            "Authentic Document Watermark"
         ];
-        features.forEach(([name, desc], i) => {
-            const nameOffset = 54 + (i * 32);
-            colText(`security-feature-${i}`, name, nameOffset, '600', '#111');
-            colText(`security-feature-desc-${i}`, desc, nameOffset + 12, 'normal', '#222');
+        features.forEach((name, i) => {
+            colText(`security-feature-${i}`, `\u2022 ${name}`, 46 + (i * 22), '600', '#111');
         });
 
         // Reg. C.C. line (bottom of the box on the sample)
